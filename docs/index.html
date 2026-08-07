@@ -573,6 +573,39 @@ pre .c { color: var(--code-comment); }
 
 /* ---- citation ------------------------------------------------- */
 
+/* ---- documentation links -------------------------------------- */
+
+.doclinks {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px 32px;
+}
+.doclink {
+  display: block;
+  padding: 18px 0;
+  border-top: var(--rule);
+  text-decoration: none;
+  color: inherit;
+  transition: border-color .18s ease;
+}
+.doclink:hover { border-top-color: var(--accent); color: inherit; }
+.doclink .doclink-name {
+  display: block;
+  font-weight: 570;
+  font-size: 1rem;
+  color: var(--accent-text);
+  letter-spacing: -.01em;
+}
+.doclink:hover .doclink-name { color: var(--accent); }
+.doclink .doclink-desc {
+  display: block;
+  margin-top: 5px;
+  font-size: .9rem;
+  color: var(--text-2);
+  max-width: 46ch;
+}
+@media (max-width: 700px) { .doclinks { grid-template-columns: minmax(0, 1fr); } }
+
 .cite {
   border: var(--rule);
   border-radius: var(--radius);
@@ -611,7 +644,7 @@ footer p { margin: 0; }
       <a href="#workflow">Workflow</a>
       <a href="#levels" data-secondary>ID levels</a>
       <a href="#outputs" data-secondary>Outputs</a>
-      <a href="#reference">Reference</a>
+      <a href="#docs">Docs</a>
     </nav>
   </div>
 </header>
@@ -624,7 +657,7 @@ footer p { margin: 0; }
         <h1>Lipid annotation from MS1 and MS2 data.</h1>
         <p>
           Annotation engine for CID, EAD, and UVPD spectra, with C=C position
-          and oxidation calls in acyl chains. Runs as a Docker container.
+          and oxidation calls in acyl chains. Rust-based. Runs as a Docker container.
         </p>
         <div class="hero-cta">
           <a class="btn btn-primary" href="#install">Install</a>
@@ -655,8 +688,7 @@ footer p { margin: 0; }
       <div class="sec-head">
         <h2>Two commands to a first run</h2>
         <p>
-          LipidOracle ships as a Docker image. Put your <code>.mgf</code> file in a local
-          input folder and mount it alongside an output folder.
+          LipidOracle ships as a Docker image. All input MS1 and MS2 data are provided in a single <code>.mgf</code> file. All settings are defined in a <code>lipidoracle.yaml</code> file, which is written to the output folder on the first run if it doesn't already exist.
         </p>
       </div>
 
@@ -669,8 +701,13 @@ footer p { margin: 0; }
         </div>
         <div class="step">
           <div class="step-body">
-            <p><strong>Mount your folders and run.</strong> MS2 data, and optionally MS1, come from a single <code>.mgf</code> file.</p>
-<pre><code>docker run --rm \
+            <p><strong>Create a local input folder. Paste the <code>.mgf</code> file with MS data into it</strong>. If you have a preconfigured <code>lipidoracle.yaml</code>, paste it in too.</p>
+              </div>
+        </div>
+        <div class="step">
+          <div class="step-body">
+            <p><strong>Mount your folders and run.</strong></p>
+              <pre><code>docker run --rm \
   -v &lt;INPUT-FOLDER&gt;:/input \
   -v &lt;OUTPUT-FOLDER&gt;:/output \
   zambonilab/lipidoracle</code></pre>
@@ -678,8 +715,9 @@ footer p { margin: 0; }
         </div>
         <div class="step">
           <div class="step-body">
-            <p><strong>Review the parameters, then run again.</strong> On the first run, if no <code>lipidoracle.yaml</code> is found in either folder, LipidOracle writes a default one to the output folder and stops so you can check it.</p>
-<pre><code>WORKFLOW:
+            <p>if no <code>lipidoracle.yaml</code> is found in either folder, LipidOracle writes a default one to the output folder and stops so you can check it.
+            <strong>Review the parameters, then run again.</strong> Or simply trust the defaults, which use the internal LipidOracle library and a permissive RT checking routine (LiRI).</p>
+              <pre><code>WORKFLOW:
   lipidoracle: True       <span class="c"># internal MS1/MS2 annotation engine</span>
   acyl_analysis: False    <span class="c"># EAD/UVPD analysis of acyl chains</span>
   rt_check: liri          <span class="c"># False | legacy | liri | hydra</span></code></pre>
@@ -901,6 +939,44 @@ footer p { margin: 0; }
     </div>
   </section>
 
+  <section id="docs">
+    <div class="wrap">
+      <div class="sec-head">
+        <h2>Documentation</h2>
+        <p>
+          How to run it, how each stage decides, and every parameter you can change.
+        </p>
+      </div>
+
+      <div class="doclinks">
+        <a class="doclink" href="DOCKER_README.html">
+          <span class="doclink-name">Installation and usage</span>
+          <span class="doclink-desc">Pulling the image, preparing input, reading the output files.</span>
+        </a>
+        <a class="doclink" href="PARAMETERS.html">
+          <span class="doclink-name">Parameters</span>
+          <span class="doclink-desc">Every setting in <code>lipidoracle.yaml</code>, with defaults and when to change them.</span>
+        </a>
+        <a class="doclink" href="LIPID_LIBRARY.html">
+          <span class="doclink-name">The built-in MS2 library</span>
+          <span class="doclink-desc">Class coverage, extra libraries, oxidation limits, and the rarity score.</span>
+        </a>
+        <a class="doclink" href="RT_CHECK.html">
+          <span class="doclink-name">Retention-time consistency</span>
+          <span class="doclink-desc">How the three engines differ, what each one can and cannot catch.</span>
+        </a>
+        <a class="doclink" href="EAD.html">
+          <span class="doclink-name">C=C and oxidation by EAD</span>
+          <span class="doclink-desc">Locating double bonds and oxygen along each chain, and the limits of that call.</span>
+        </a>
+        <a class="doclink" href="https://github.com/zamboni-lab/lipidoracle/issues">
+          <span class="doclink-name">Report an issue</span>
+          <span class="doclink-desc">Questions, bug reports, and feature requests on GitHub.</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
   <section id="reference">
     <div class="wrap">
       <div class="sec-head">
@@ -931,6 +1007,9 @@ footer p { margin: 0; }
 <footer>
   <div class="wrap">
     <p>LipidOracle, Zamboni lab, ETH Zurich.</p>
+    <p>
+      <a href="https://github.com/zamboni-lab/lipidoracle/issues">Report an issue</a>
+    </p>
     <p><a href="https://hub.docker.com/r/zambonilab/lipidoracle">zambonilab/lipidoracle on Docker Hub</a></p>
   </div>
 </footer>
