@@ -10,21 +10,29 @@ LipidOracle ships with an internal lipid library that is the primary source for 
 
 Open `diag/dashboard.html` and go to **Documentation > Lipid Library** to see the exact class and adduct coverage for that run. The dashboard shows two sections:
 
-**Libraries used in this run** lists which sources are active (internal LipidOracle, LipiDex, LipidBlast, and any extras you configured). This section reflects your `WORKFLOW` parameters.
+**Libraries used in this run** lists which sources are active (internal LipidOracle v1.1, LipiDex, LipidBlast, and any extras you configured). This section reflects your `WORKFLOW` parameters.
 
-**Built-in class and adduct coverage** is a table showing every internal library entry for the ion polarity used in your run. The columns are:
+**Built-in class and adduct coverage** is a table showing every internal library entry for the ion polarity used in your run. Columns are:
 
 | Column | Meaning |
 |---|---|
-| Class name | Full lipid class name, e.g. `Phosphatidylcholine` |
-| Abbreviation | Standard shorthand, e.g. `PC` |
-| Adducts | Ion forms, e.g. `[M+H]+`, `[M+Na]+` |
-| Max level | Highest annotation level reachable for that adduct. Depends on whether MS2 is available. |
+| Class name | Full lipid class name, e.g. Phosphatidylcholine |
+| Abbreviation | Standard shorthand, e.g. PC |
+| Adducts | Ion forms, e.g. `[M+H]+`, `[M+Na]+`, `[M+NH4]+` |
+| Max level | Highest annotation level reachable for that adduct (MS1 or MS2) |
 | Carbon range | Minimum to maximum carbons in the library |
-| Double-bond range | Minimum to maximum double bonds in the library |
-| Unique species | Count of distinct lipid species for that class under the current oxidation settings |
+| Max DB | Maximum double bonds in the library for that class |
+| Unique species | Count of distinct lipid species under the current oxidation settings |
 
 The table is generated from the library definition in the version you ran. The unique-species counts reflect your active `PARAM.ms1_maxO` and `PARAM.ms2_maxO` settings.
+
+Example entry from a typical run (positive ion mode):
+
+| Class | Abbreviation | Adducts | Max level | Carbon range | Max DB | Unique species |
+|---|---|---|---|---|---|---|
+| Phosphatidylcholine | PC | `[M+H]+`, `[M+Na]+` | `[M+H]+`: MS2; `[M+Na]+`: MS2 | 2–60 | 6 | 337 |
+| Triacylglycerol | TG | `[M+NH4]+`, `[M+Na]+`, `[M+H]+` | all: MS2 | 14–60 | 12 | 461 |
+| Cardiolipin | CL | `[M+H]+`, `[M+Na]+`, `[M+NH4]+` | all: MS2 | 2–80 | 12 | 325 |
 
 ## What the library covers
 
@@ -89,18 +97,24 @@ WORKFLOW:
 
 ## Oxidation
 
-The library can generate oxidised variants of each entry. Two separate limits control how far that goes, because the MS1 and MS2 libraries are built independently:
+The library can generate oxidised variants of each entry. Two separate limits control how far that goes, because MS1 and MS2 libraries are built independently:
 
 | Parameter | Default | Controls |
 |---|---|---|
-| `PARAM.ms1_maxO` | `0` | Maximum side-chain oxygen atoms when building the MS1 library |
-| `PARAM.ms2_maxO` | `0` | Maximum side-chain oxygen atoms during MS2 isomer generation |
+| `PARAM.ms1_maxO` | `0` | Maximum additional oxygen atoms per lipid during MS1 library generation |
+| `PARAM.ms2_maxO` | `0` | Maximum additional oxygen atoms per chain during MS2 isomer generation |
 
-Both default to `0`, which means no oxidised variants are generated at all. Raise them if you are looking for oxidised lipids: `ms1_maxO: 1` includes mono-oxidised species in MS1 matching, and `ms2_maxO: 2` allows up to two oxygens per lipid during MS2 analysis.
+Both default to `0`, which means no oxidised variants are generated. Raise them if you are looking for oxidised lipids:
 
-Oxidized variants are generated **per chain**, so a lipid with two chains can carry oxygens on both, up to the limit you set. The total library size and runtime grow with the oxygen limits you choose.
+- `ms1_maxO: 1` includes mono-oxidised species in MS1 matching (one extra oxygen per lipid)
+- `ms2_maxO: 2` allows up to two extra oxygen atoms per chain during MS2 analysis
 
-The oxidation policy actually applied in a run is printed on the dashboard's Lipid Library page, so you can verify exactly which variants were considered for that analysis.
+**How oxidation limits work:**
+
+- **MS1 generation:** the limit is per *lipid*. A TG with `ms1_maxO: 1` can have one oxygen across its three chains; setting `ms1_maxO: 2` allows two total oxygens across all chains.
+- **MS2 generation:** the limit is per *chain*. Each acyl chain can carry up to `ms2_maxO` oxygens independently, subject to the class definition's oxygen limit. A lipid with two chains and `ms2_maxO: 2` can have up to 2 oxygens on chain 1 and 2 on chain 2.
+
+Total library size and runtime grow substantially with oxidation limits. The oxidation policy actually applied in a run is printed on the dashboard's Lipid Library page, so you can verify exactly which variants were considered.
 
 ## Rarity
 
