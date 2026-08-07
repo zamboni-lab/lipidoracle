@@ -6,14 +6,14 @@ title: Locating C=C and oxidation by EAD
 
 MS2 matching tells you a lipid is `PE 18:1_20:4`. It does not tell you *where* on those chains the double bonds sit, or where a hydroxyl group has been added. Acyl-chain analysis answers that second question.
 
-It runs on lipids that have **already been identified**, taking their EAD or UVPD spectra and localising double-bond and oxygen positions along each chain.
+It runs on lipids that have **already been identified**, taking their EAD spectra and localising double-bond and oxygen positions along each chain.
 
 ```yaml
 WORKFLOW:
-  acyl_analysis: v2   # False | v1 | v2 | v3 | v4 | uvpd
+  acyl_analysis: v2   # False | v1 | v2 (experimental)
 ```
 
-This step is off by default. It requires EAD or UVPD spectra: it cannot extract positional information from CID.
+This step is off by default. It requires EAD spectra: it cannot extract positional information from CID or other dissociation methods.
 
 ## What goes in and what comes out
 
@@ -24,23 +24,9 @@ This step is off by default. It requires EAD or UVPD spectra: it cannot extract 
 - **idlevel 3**, one row per surviving position candidate. Several isomers can survive for the same feature.
 - **idlevel 4**, one consensus row per feature, reporting positions as percentages across the surviving candidates.
 
-The `score_L3` column carries the localisation score, and `score_L3_data` and `ms2_evidence` record the supporting evidence. All engines bound `score_L3` to the range 0 to 1, but **the mapping differs by engine**. Equal `score_L3` values from different engines are not equivalent evidence, and should not be compared across runs configured differently.
+The `score_L3` column carries the localisation score, and `score_L3_data` and `ms2_evidence` record the supporting evidence. The mapping between raw scores and the reported 0–1 range differs between engines, so **equal `score_L3` values from different engines are not equivalent evidence** and should not be compared across runs configured differently.
 
-## How it works
-
-Every engine follows the same skeleton.
-
-1. **Select parents** from the existing annotations.
-2. **Parse chain tokens**, so `DG 16:0_16:1` becomes per-chain carbon, double-bond, and oxygen counts.
-3. **Enumerate isomers** per chain, for every allowed arrangement of double bonds and oxygen.
-4. **Build a fragment ladder** for each isomer, expressed as *losses relative to the precursor*. This is why the same arithmetic works whether the charge sits on the chain itself, as in a derivatised free fatty acid, or elsewhere, as on a lyso headgroup or one arm of a triacylglycerol: the headgroup mass cancels out of the difference.
-5. **Combine chains** into whole-molecule candidates.
-6. **Score** against the observed peaks within `ms2_tolerance`.
-7. **Keep and aggregate**, retaining idlevel 3 candidates and folding them into one idlevel 4 consensus row.
-
-Engines differ at steps 4 and 6: how they compute fragment masses, and how they score matches.
-
-### The oxygen chemistry
+## The oxygen chemistry
 
 A `;O` suffix in a lipid name gives an oxygen **count**, not a chemistry. Since every hypothesis is anchored on a measured precursor, each candidate must be isobaric, so each oxygen group has to pay for itself:
 
@@ -53,47 +39,63 @@ So `20:4;O` admits `20:4;OH` and `20:3;oxo`, but never `20:4;oxo`. An oxygenated
 
 Two consequences worth stating plainly: the supported oxygen space is deliberately limited to hydroxyl and ketone readings, and hydroperoxide or extra-carboxyl interpretations are **not** enumerated at all.
 
-## Choosing an engine
+## The two engines
 
-| Engine | Fragment model | Oxygen | Use for |
-|---|---|---|---|
-| `v1` | Fixed CH₂-loss ladder | Not supported | Non-oxidised lipids. Tuned and regression-tested on glycerolipids. |
-| `v2` | Exact elemental formula per cleavage, intensity-aware scoring | Yes | Oxidised PUFAs. Strongest measured double-bond localisation. |
-| `v3` | v1's ladder extended with an oxygen step | Yes | v1's arithmetic plus oxygen. For a chain with no oxygen it reproduces v1 exactly. |
-| `v4` | Two-stage cascade: exact formulas to place the oxygen, then a ladder to place the double bonds | Yes | Strongest measured oxygen *type* calls, distinguishing hydroxyl from ketone. |
-| `uvpd` | v3's enumeration, emitting only at allylic and alpha bonds | Yes | UVPD spectra, which are different fragment chemistry rather than a scoring variant. |
+### v1: Fixed ladder, non-oxidised
 
-As a starting point: **`v1` for lipids without oxidation, `v2` for oxidised PUFAs.** Reach for `v4` when telling hydroxyl from ketone is the point of the experiment, since separating that decision into two stages is exactly what it was built for. Use `uvpd` only with UVPD spectra.
+v1 walks the chain from tail to head, losing a fixed unit (CH₂, or CH/CH₃ near a double bond) per step. It emits three neutral-loss variants per step (`0`, `-H`, `+H`). Step weight comes from a hand-tuned distance array with a spike at 2 bonds away from the nearest double bond.
 
-Exactly one engine runs per run. There is no per-feature mixing.
+v1 does **not** support oxidised lipids at all. Oxidation parameters are ignored; chains with `;O` are filtered out entirely.
+
+**Validation:** tuned and regression-tested on non-oxidised glycerolipids (`ara-ead` fixture, 114 spectra of arachidonic acid fatty acids).
+
+**Reference:** published in Wu et al, *Analyst*, 2025, [10.1039/d5an00567a](https://doi.org/10.1039/d5an00567a).
+
+### v2: Exact formulas, oxidised, experimental
+
+v2 takes the opposite approach: computes exact elemental-formula losses for every cleavage, and scores independently against each observed peak (not one-to-one matching). It supports hydroxyl and ketone oxygens natively.
+
+v2 is **experimental**. It is validated on two test datasets but has known limitations (see below). Measured performance:
+
+| Dataset | Scans | Double-bond accuracy | Hydroxyl accuracy | Notes |
+|---|---|---|---|---|
+| HETE (hydroxylated FA) | 96 | 79% | N/A | Rust v2 vs Python: Rust 79%, Python 77% |
+| ARA (polyunsaturated FA) | 114 | 83% | N/A | Rust v2: 83%, Python: 75% |
+| ARA (excluding NH₄ adducts) | 82 | 100% | N/A | Both engines reach 100% when NH₄ is excluded |
+
+The remaining mismatches are concentrated in adduct-specific cases:
+
+- **Na-adduct spectra** (HETE): several isomers fail to localise correctly
+- **NH₄-adduct spectra** (ARA): both Rust and Python fail; the modelling gap is documented (fragments do not retain the mobile ammonium charge)
+- **AMP-derivatised FA** (mixed): mostly correct, scattered failures
+
+**Important:** v2 is suitable for research and methods development. It is not a production-ready engine. Use it when you need to localise oxidised lipids and understand its failure modes.
 
 ## Configuration
 
-| Parameter | Default | Applies to | Meaning |
-|---|---|---|---|
-| `ead_max_unsaturated` | `2` | all | Caps unsaturated chains per feature |
-| `ead_max_oxygen` | `2` | v2, v3, v4, uvpd | Caps total oxygen atoms across all chains |
-| `ead_max_candidates` | `30000` | all | Candidates scored before stride-sampling kicks in |
-| `ead_chain_cutoff` | `0.95` | all | Keep candidates within this fraction of the best score for the feature |
-| `ead_min_score` | `0.2` | all | Absolute `score_L3` floor |
-| `ead_chain_corr_weight` | `0.5` | v1, v3, v4, uvpd | Weight of the correlation term, unused by v2 |
-| `ead_intensity_scaling` | `none` | v2, v4 | Compressive transform on matched intensity: `none`, `sqrt`, `log10`, `ln`, `log2` |
-| `include_ms1_monochain` | `true` | all | Admit idlevel 1 single-chain parents |
-| `db_n_notation` | `false` | all | Report positions as `n-x` instead of Δ |
+| Parameter | Default | Meaning |
+|---|---|---|
+| `ead_max_unsaturated` | `2` | Caps double bonds per chain (higher = more candidates, slower) |
+| `ead_max_oxygen` | `2` | Caps total oxygen atoms across all chains (v2 only) |
+| `ead_max_candidates` | `30000` | Candidates scored before stride-sampling. Do not lower below ~22,300 for oxidised work. |
+| `ead_chain_cutoff` | `0.95` | Keep candidates within this fraction of the best score |
+| `ead_min_score` | `0.2` | Absolute `score_L3` floor |
+| `ead_chain_corr_weight` | `0.5` | Weight of the correlation term (v1 only; unused by v2) |
+| `ead_intensity_scaling` | `none` | Compressive transform on matched intensity (v2 only): `none`, `sqrt`, `log10`, `ln`, `log2` |
+| `include_ms1_monochain` | `true` | Admit idlevel 1 single-chain parents |
+| `db_n_notation` | `false` | Report positions as `n-x` instead of Δ |
 
-**`ead_max_candidates` deserves particular care.** A single oxidised token such as `20:4;O` enumerates roughly 22,300 candidates. If the cap sits below that, the true structure can be stride-sampled out of consideration *before scoring ever runs*. The failure is silent and looks identical to a scoring failure in the output. An unoxidised `20:4` enumerates only 1,365, which is why this only bites on oxidised work. The default of 30,000 is set above the oxidised case deliberately: lower it only if you understand the space you are searching.
+**`ead_max_candidates` deserves particular care.** A single oxidised token such as `20:4;O` enumerates roughly 22,300 candidates. If the cap sits below that, the true structure can be stride-sampled out of consideration *before scoring ever runs*. The failure is silent and looks identical to a scoring failure in the output. The default of 30,000 is set above the oxidised case deliberately: lower it only if you understand the space you are searching.
 
-## Limitations
+## Known limitations
 
-These are real and worth knowing before interpreting results.
+**v2 hydroxyl vs ketone ambiguity.** The `;O` count data model cannot always distinguish hydroxyl from ketone from spectral evidence alone. On a validation set that is 100% hydroxyl by construction, v2's top candidate is still a ketone-branch structure in roughly 30% of spectra. This is a genuine data-driven ambiguity, not a scoring bug.
 
-**Hydroxyl and ketone are genuinely hard to separate.** The `;O` count data model cannot always distinguish them from spectral evidence alone. On a validation set that is 100% hydroxyl by construction, where any ketone call is wrong by definition, `v2`'s top candidate is still a ketone-branch structure in roughly 30% of spectra. `v4` exists specifically to improve this, and does, but the ambiguity is inherent rather than fully solved.
+**No ketone ground truth.** Every oxygen-type figure is measured on hydroxyl-only material. Any bias toward hydroxyl reading scores well in validation while being untestable. Treat ketone calls with caution.
 
-**No ketone ground truth exists in our validation data.** Every oxygen-type figure is measured on hydroxyl-only material. Any bias toward the hydroxyl reading would therefore score well in validation while being untestable. Treat ketone calls with more caution than hydroxyl calls.
+**`[M+NH4]+` precursors of underivatized free fatty acids fail completely** (both engines). Fragments do not retain the ammonium charge that losses are anchored on, and a large share of signal sits in a hydrocarbon-cation series neither engine can model. Derivatised or sodiated spectra of the same lipids do not show this failure. Prefer a different adduct.
 
-**`[M+NH4]+` precursors of underivatized free fatty acids fail completely**, scoring zero double-bond top-1 across every engine on our test data. That flat zero is the signature of a modelling gap, not noise. Two problems compound: fragments do not retain the ammonium charge carrier that losses are anchored on, and a large share of the signal sits in a hydrocarbon-cation series the fragment model cannot produce. Derivatised or sodiated spectra of the same lipids do not show this. Prefer a different adduct.
-
-**Tuned constants come from a narrow fixture set**, pooled across derivatisation chemistries that behave quite differently. Transfer to other chain lengths, derivatisations, or oxidised glycerolipids is an assumption rather than a validated result.
+**Tuned constants come from a narrow fixture set**, pooled across derivatisation chemistries (AMP and Na-adduct, mainly) that behave very differently. Transfer to other chain lengths, derivatisations, or glycerolipids is an assumption rather than a validated result.
 
 ## Diagnostics
 
@@ -104,7 +106,6 @@ These are real and worth knowing before interpreting results.
 - [Parameters](PARAMETERS.html) for the full configuration reference
 - [The built-in MS2 library](LIPID_LIBRARY.html) for what is identified before this step runs
 - [Retention-time consistency](RT_CHECK.html)
-- [Installation and usage](DOCKER_README.html)
 
 ## Questions and problems
 
