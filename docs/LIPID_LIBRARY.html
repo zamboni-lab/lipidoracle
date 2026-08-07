@@ -36,7 +36,7 @@
             line-height: 1.6;
         }
         .wrap {
-            max-width: 800px;
+            max-width: 900px;
             margin: 0 auto;
             padding: 40px 20px;
         }
@@ -49,9 +49,9 @@
         code { background: var(--panel); padding: 0.2em 0.4em; border-radius: 4px; font-family: monospace; font-size: 0.95em; }
         pre { background: var(--panel); padding: 1rem; border-radius: var(--radius); overflow-x: auto; margin: 1rem 0; border: 1px solid var(--border); }
         pre code { background: none; padding: 0; }
-        table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; border: 1px solid var(--border); }
+        table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; border: 1px solid var(--border); display: block; overflow-x: auto; }
         thead { background: var(--panel); border-bottom: 1px solid var(--border); }
-        th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--border); }
+        th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
         th { font-weight: 600; color: var(--accent-text); }
         ul, ol { margin-left: 1.5rem; margin-bottom: 1rem; }
         nav { display: flex; gap: 1.5rem; margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border); }
@@ -64,7 +64,101 @@
             <a href="index.html">← Back to landing page</a>
         </nav>
         <article>
-
+<h1>The built-in MS2 library</h1>
+<p>LipidOracle ships with an internal lipid library that is the primary source for both MS1 and MS2 annotation. LipiDex, LipidBlast, and any libraries you supply through <code>WORKFLOW.library_extra</code> are optional additional sources.</p>
+<h2>Understanding the dashboard coverage table</h2>
+<p>Open <code>diag/dashboard.html</code> and go to <strong>Documentation &gt; Lipid Library</strong> to see the exact class and adduct coverage for that run. The dashboard shows two sections:</p>
+<p><strong>Libraries used in this run</strong> lists which sources are active (internal LipidOracle v1.1, LipiDex, LipidBlast, and any extras you configured). This section reflects your <code>WORKFLOW</code> parameters.</p>
+<p><strong>Built-in class and adduct coverage</strong> is a table showing every internal library entry for the ion polarity used in your run. Columns are:</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Class name</td>
+<td>Full lipid class name, e.g. Phosphatidylcholine</td>
+</tr>
+<tr>
+<td>Abbreviation</td>
+<td>Standard shorthand, e.g. PC</td>
+</tr>
+<tr>
+<td>Adducts</td>
+<td>Ion forms, e.g. <code>[M+H]+</code>, <code>[M+Na]+</code>, <code>[M+NH4]+</code></td>
+</tr>
+<tr>
+<td>Max level</td>
+<td>Highest annotation level reachable for that adduct (MS1 or MS2)</td>
+</tr>
+<tr>
+<td>Carbon range</td>
+<td>Minimum to maximum carbons in the library</td>
+</tr>
+<tr>
+<td>Max DB</td>
+<td>Maximum double bonds in the library for that class</td>
+</tr>
+<tr>
+<td>Unique species</td>
+<td>Count of distinct lipid species under the current oxidation settings</td>
+</tr>
+</tbody>
+</table>
+<p>The table is generated from the library definition in the version you ran. The unique-species counts reflect your active <code>PARAM.ms1_maxO</code> and <code>PARAM.ms2_maxO</code> settings. See the <a href="PARAMETERS.html">Parameters</a> documentation for full configuration details.</p>
+<h2>Library sources</h2>
+<table>
+<thead>
+<tr>
+<th>Source</th>
+<th>Switch</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Internal LipidOracle library</td>
+<td><code>WORKFLOW.lipidoracle</code></td>
+<td>Default <code>True</code>. The primary, fully supported path. Includes MS2.</td>
+</tr>
+<tr>
+<td>LipiDex</td>
+<td><code>WORKFLOW.lipidex</code></td>
+<td>Default <code>False</code>. Optional comparative source, fewer features.</td>
+</tr>
+<tr>
+<td>LipidBlast</td>
+<td><code>WORKFLOW.lipidblast</code></td>
+<td>Default <code>False</code>. Optional comparative source, fewer features.</td>
+</tr>
+<tr>
+<td>Your own CSV</td>
+<td><code>WORKFLOW.library_extra</code></td>
+<td>Default empty. One or more CSV files.</td>
+</tr>
+</tbody>
+</table>
+<h2>Rarity</h2>
+<p>Not every formally valid lipid is equally likely to be real. LipidOracle assigns each library entry a <strong>rarity index</strong>, built as the sum of:</p>
+<ul>
+<li>Rarity of the headgroup (e.g. cardiolipin is rarer than phosphatidylcholine)</li>
+<li>Rarity of the chain lengths (very long chains, very short chains, or uneven chain pairs contribute)</li>
+<li>Modifications present, such as hydroxyl or epoxy groups</li>
+</ul>
+<p>You control rarity in two ways, and they behave very differently:</p>
+<p><strong>A priori filtering: <code>PARAM.rarity_max</code> (default <code>3</code>).</strong> Entries above the configured maximum are excluded from the library <em>before</em> matching begins. Rare lipids are never considered at all. Setting <code>rarity_max: 0</code> keeps every entry regardless of rarity; setting <code>rarity_max: 1</code> removes all entries with rarity 2+ from the library. This approach is stricter and more conservative. Use it when you want to exclude unlikely lipids entirely.</p>
+<p><strong>A posteriori scoring: <code>PARAM.rarity_penalty</code> (default <code>0.15</code>).</strong> Leaving <code>rarity_max</code> at 2 or 3 keeps rare forms in the library, but the penalty lowers their matching score. A rare lipid survives into the annotation only when its <code>score_L2</code> is high enough to overcome the penalty. This approach lets the data decide: the evidence is there, but weak matches on rare lipids are easier to filter out. This is usually the better choice: you keep all evidence and let score protect against noise rather than deciding in advance which lipids are worth considering.</p>
+<h2>Related</h2>
+<ul>
+<li><a href="PARAMETERS.html">Parameters</a> for the full configuration reference</li>
+<li><a href="RT_CHECK.html">Retention-time consistency</a> for the filter applied after matching</li>
+<li><a href="EAD.html">C=C and oxidation by EAD</a> for what happens to matched lipids afterwards</li>
+</ul>
+<h2>Questions and problems</h2>
+<p>Report issues or ask questions at <a href="https://github.com/zamboni-lab/lipidoracle/issues">github.com/zamboni-lab/lipidoracle/issues</a>.</p>
         </article>
     </div>
 </body>
