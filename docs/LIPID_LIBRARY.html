@@ -54,6 +54,7 @@
         th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
         th { font-weight: 600; color: var(--accent-text); }
         ul, ol { margin-left: 1.5rem; margin-bottom: 1rem; }
+        strong { font-weight: 600; }
         nav { display: flex; gap: 1.5rem; margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border); }
         nav a { font-size: 0.95rem; color: var(--text-2); }
     </style>
@@ -65,51 +66,167 @@
         </nav>
         <article>
 <h1>The built-in MS2 library</h1>
-<p>LipidOracle ships with an internal lipid library that is the primary source for both MS1 and MS2 annotation. LipiDex, LipidBlast, and any libraries you supply through <code>WORKFLOW.library_extra</code> are optional additional sources.</p>
-<h2>Understanding the dashboard coverage table</h2>
-<p>Open <code>diag/dashboard.html</code> and go to <strong>Documentation &gt; Lipid Library</strong> to see the exact class and adduct coverage for that run. The dashboard shows two sections:</p>
-<p><strong>Libraries used in this run</strong> lists which sources are active (internal LipidOracle v1.1, LipiDex, LipidBlast, and any extras you configured). This section reflects your <code>WORKFLOW</code> parameters.</p>
-<p><strong>Built-in class and adduct coverage</strong> is a table showing every internal library entry for the ion polarity used in your run. Columns are:</p>
+
+<h2>Classes</h2>
 <table>
 <thead>
 <tr>
-<th>Column</th>
-<th>Meaning</th>
+<th>Class</th>
+<th>Abbreviation</th>
+<th>Adducts</th>
+<th>Max level</th>
+<th>Carbon range</th>
+<th>Max DB</th>
+<th>Unique species</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Class name</td>
-<td>Full lipid class name, e.g. Phosphatidylcholine</td>
+<td>Bis(monoacylglycero)phosphate</td>
+<td>BMP</td>
+<td><code>[M+H]+</code>; <code>[M+Na]+</code></td>
+<td><code>[M+H]+</code>: MS1; <code>[M+Na]+</code>: MS1</td>
+<td>12–60</td>
+<td>6</td>
+<td>313</td>
 </tr>
 <tr>
-<td>Abbreviation</td>
-<td>Standard shorthand, e.g. PC</td>
+<td>Carnitine</td>
+<td>CAR</td>
+<td><code>[M+H]+</code>; <code>[M+Na]+</code>; <code>[M+NH4]+</code></td>
+<td><code>[M+H]+</code>: MS2; <code>[M+Na]+</code>: MS1; <code>[M+NH4]+</code>: MS1</td>
+<td>2–30</td>
+<td>6</td>
+<td>83</td>
 </tr>
 <tr>
-<td>Adducts</td>
-<td>Ion forms, e.g. <code>[M+H]+</code>, <code>[M+Na]+</code>, <code>[M+NH4]+</code></td>
+<td>Cholesteryl ester</td>
+<td>CE</td>
+<td><code>[M+H]+</code>; <code>[M-H2O+H]+</code>; <code>[M+Na]+</code>; <code>[M+NH4]+</code></td>
+<td><code>[M+H]+</code>: MS2; <code>[M-H2O+H]+</code>: MS1; <code>[M+Na]+</code>: MS1; <code>[M+NH4]+</code>: MS2</td>
+<td>2–34</td>
+<td>6</td>
+<td>93</td>
 </tr>
 <tr>
-<td>Max level</td>
-<td>Highest annotation level reachable for that adduct (MS1 or MS2)</td>
+<td>Cardiolipin</td>
+<td>CL</td>
+<td><code>[M+H]+</code>; <code>[M+Na]+</code>; <code>[M+NH4]+</code></td>
+<td>all: MS2</td>
+<td>2–80</td>
+<td>12</td>
+<td>325</td>
 </tr>
 <tr>
-<td>Carbon range</td>
-<td>Minimum to maximum carbons in the library</td>
+<td>Phosphatidylcholine</td>
+<td>PC</td>
+<td><code>[M+H]+</code>; <code>[M+Na]+</code></td>
+<td>all: MS2</td>
+<td>2–60, 12–60</td>
+<td>6</td>
+<td>337, 292, 0</td>
 </tr>
 <tr>
-<td>Max DB</td>
-<td>Maximum double bonds in the library for that class</td>
+<td>Phosphatidylethanolamine</td>
+<td>PE</td>
+<td><code>[M+H]+</code>; <code>[M+Na]+</code></td>
+<td><code>[M+H]+</code>: MS2; <code>[M+Na]+</code>: MS1</td>
+<td>2–60, 12–60</td>
+<td>6</td>
+<td>337, 292, 0</td>
 </tr>
 <tr>
-<td>Unique species</td>
-<td>Count of distinct lipid species under the current oxidation settings</td>
+<td>Sphingomyelin</td>
+<td>SM</td>
+<td><code>[M+H]+</code>; <code>[M+Na]+</code></td>
+<td>all: MS2</td>
+<td>28–60</td>
+<td>6</td>
+<td>103</td>
+</tr>
+<tr>
+<td>Triacylglycerol</td>
+<td>TG</td>
+<td><code>[M+NH4]+</code>; <code>[M+Na]+</code>; <code>[M+H]+</code>; <code>[M+K]+</code>; <code>[M+Li]+</code></td>
+<td>all: MS2</td>
+<td>14–60</td>
+<td>12</td>
+<td>461</td>
 </tr>
 </tbody>
 </table>
-<p>The table is generated from the library definition in the version you ran. The unique-species counts reflect your active <code>PARAM.ms1_maxO</code> and <code>PARAM.ms2_maxO</code> settings. See the <a href="PARAMETERS.html">Parameters</a> documentation for full configuration details.</p>
-<h2>Library sources</h2>
+<p><em>Full table with all 52 classes is available in the dashboard's Lipid Library documentation page.</em></p>
+
+<h2>Oxidation</h2>
+
+<p>The library can generate oxidised variants of each entry. Two separate limits control how far that goes, because MS1 and MS2 libraries are built independently:</p>
+
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Default</th>
+<th>Controls</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>PARAM.ms1_maxO</code></td>
+<td><code>0</code></td>
+<td>Maximum additional oxygen atoms per lipid during MS1 library generation</td>
+</tr>
+<tr>
+<td><code>PARAM.ms2_maxO</code></td>
+<td><code>0</code></td>
+<td>Maximum additional oxygen atoms per chain during MS2 isomer generation</td>
+</tr>
+</tbody>
+</table>
+
+<p>Both default to <code>0</code>, which means no oxidised variants are generated. Raise them if you are looking for oxidised lipids:</p>
+
+<ul>
+<li><code>ms1_maxO: 1</code> includes mono-oxidised species in MS1 matching (one extra oxygen per lipid)</li>
+<li><code>ms2_maxO: 2</code> allows up to two extra oxygen atoms per chain during MS2 analysis</li>
+</ul>
+
+<p><strong>How oxidation limits work:</strong></p>
+
+<ul>
+<li><strong>MS1 generation:</strong> the limit is per <em>lipid</em>. A TG with <code>ms1_maxO: 1</code> can have one oxygen across its three chains; setting <code>ms1_maxO: 2</code> allows two total oxygens across all chains.</li>
+<li><strong>MS2 generation:</strong> the limit is per <em>chain</em>. Each acyl chain can carry up to <code>ms2_maxO</code> oxygens independently, subject to the class definition's oxygen limit. A lipid with two chains and <code>ms2_maxO: 2</code> can have up to 2 oxygens on chain 1 and 2 on chain 2.</li>
+</ul>
+
+<p>Total library size and runtime grow substantially with oxidation limits. The oxidation policy actually applied in a run is printed on the dashboard's Lipid Library page, so you can verify exactly which variants were considered.</p>
+
+<h2>Rarity</h2>
+
+<p>Not every formally valid lipid is equally likely to be real. LipidOracle assigns each library entry a <strong>rarity index</strong>, built as the sum of:</p>
+
+<ul>
+<li>Rarity of the headgroup (e.g. cardiolipin is rarer than phosphatidylcholine)</li>
+<li>Rarity of the chain lengths (very long chains, very short chains, or uneven chain pairs contribute)</li>
+<li>Modifications present, such as hydroxyl or epoxy groups</li>
+</ul>
+
+<p>The resulting rarity is an integer. Examples:</p>
+
+<ul>
+<li>Rarity <code>0</code> is a common lipid: <code>PC 34:1</code> or <code>PE 36:2</code></li>
+<li>Rarity <code>1</code> is uncommon: <code>PC 40:0</code> or <code>PE O-40:6</code></li>
+<li>Rarity <code>2</code> or <code>3</code> marks genuinely rare lipids: <code>CL 72:8</code>, <code>Cer d18:1/24:0</code>, or unusual oxidised forms</li>
+</ul>
+
+<p>You control rarity in two ways, and they behave very differently:</p>
+
+<p><strong>A priori filtering: <code>PARAM.rarity_max</code> (default <code>3</code>).</strong> Entries above the configured maximum are excluded from the library <em>before</em> matching begins. Rare lipids are never considered at all. Setting <code>rarity_max: 0</code> keeps every entry regardless of rarity; setting <code>rarity_max: 1</code> removes all entries with rarity 2+ from the library. This approach is stricter and more conservative. Use it when you want to exclude unlikely lipids entirely.</p>
+
+<p><strong>A posteriori scoring: <code>PARAM.rarity_penalty</code> (default <code>0.15</code>).</strong> Leaving <code>rarity_max</code> at 2 or 3 keeps rare forms in the library, but the penalty lowers their matching score. A rare lipid survives into the annotation only when its <code>score_L2</code> is high enough to overcome the penalty. This approach lets the data decide: the evidence is there, but weak matches on rare lipids are easier to filter out. This is usually the better choice: you keep all evidence and let score protect against noise rather than deciding in advance which lipids are worth considering.</p>
+
+<p>Both parameters are independent. You can use both (keep all entries in the library with <code>rarity_max: 0</code>, but apply a penalty with <code>rarity_penalty</code>), or just one.</p>
+
+<h2>Additional libraries</h2>
+
 <table>
 <thead>
 <tr>
@@ -119,11 +236,6 @@
 </tr>
 </thead>
 <tbody>
-<tr>
-<td>Internal LipidOracle library</td>
-<td><code>WORKFLOW.lipidoracle</code></td>
-<td>Default <code>True</code>. The primary, fully supported path. Includes MS2.</td>
-</tr>
 <tr>
 <td>LipiDex</td>
 <td><code>WORKFLOW.lipidex</code></td>
@@ -141,23 +253,61 @@
 </tr>
 </tbody>
 </table>
-<h2>Rarity</h2>
-<p>Not every formally valid lipid is equally likely to be real. LipidOracle assigns each library entry a <strong>rarity index</strong>, built as the sum of:</p>
-<ul>
-<li>Rarity of the headgroup (e.g. cardiolipin is rarer than phosphatidylcholine)</li>
-<li>Rarity of the chain lengths (very long chains, very short chains, or uneven chain pairs contribute)</li>
-<li>Modifications present, such as hydroxyl or epoxy groups</li>
-</ul>
-<p>You control rarity in two ways, and they behave very differently:</p>
-<p><strong>A priori filtering: <code>PARAM.rarity_max</code> (default <code>3</code>).</strong> Entries above the configured maximum are excluded from the library <em>before</em> matching begins. Rare lipids are never considered at all. Setting <code>rarity_max: 0</code> keeps every entry regardless of rarity; setting <code>rarity_max: 1</code> removes all entries with rarity 2+ from the library. This approach is stricter and more conservative. Use it when you want to exclude unlikely lipids entirely.</p>
-<p><strong>A posteriori scoring: <code>PARAM.rarity_penalty</code> (default <code>0.15</code>).</strong> Leaving <code>rarity_max</code> at 2 or 3 keeps rare forms in the library, but the penalty lowers their matching score. A rare lipid survives into the annotation only when its <code>score_L2</code> is high enough to overcome the penalty. This approach lets the data decide: the evidence is there, but weak matches on rare lipids are easier to filter out. This is usually the better choice: you keep all evidence and let score protect against noise rather than deciding in advance which lipids are worth considering.</p>
-<h2>Related</h2>
-<ul>
-<li><a href="PARAMETERS.html">Parameters</a> for the full configuration reference</li>
-<li><a href="RT_CHECK.html">Retention-time consistency</a> for the filter applied after matching</li>
-<li><a href="EAD.html">C=C and oxidation by EAD</a> for what happens to matched lipids afterwards</li>
-</ul>
+
+<h3>Supplying your own CSV library</h3>
+
+<p>A custom CSV can be a plain MS1 list or can carry MS2 fragments. Recognised columns:</p>
+
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>name</code></td>
+<td>Lipid name</td>
+</tr>
+<tr>
+<td><code>species</code></td>
+<td>Species identifier</td>
+</tr>
+<tr>
+<td><code>formula</code></td>
+<td>Molecular formula</td>
+</tr>
+<tr>
+<td><code>chains</code></td>
+<td>Number of acyl chains, defaults to 0 if omitted</td>
+</tr>
+<tr>
+<td><code>hg_class</code></td>
+<td>Headgroup class</td>
+</tr>
+<tr>
+<td><code>adduct</code></td>
+<td>Ion form, for example <code>[M+H]+</code></td>
+</tr>
+<tr>
+<td><code>mod</code></td>
+<td>Modifications</td>
+</tr>
+<tr>
+<td><code>frag_mz</code>, <code>frag_w</code>, <code>frag_label</code>, <code>frag_type</code></td>
+<td>Optional MS2 fragment definition</td>
+</tr>
+</tbody>
+</table>
+
+<p>Point at it with an absolute path inside the container:</p>
+
+<pre><code>WORKFLOW:
+  library_extra: ["/input/my_library.csv"]</code></pre>
+
 <h2>Questions and problems</h2>
+
 <p>Report issues or ask questions at <a href="https://github.com/zamboni-lab/lipidoracle/issues">github.com/zamboni-lab/lipidoracle/issues</a>.</p>
         </article>
     </div>
