@@ -6,23 +6,45 @@ title: The built-in MS2 library
 
 LipidOracle ships with an internal lipid library that is the primary source for both MS1 and MS2 annotation. LipiDex, LipidBlast, and any libraries you supply through `WORKFLOW.library_extra` are optional additional sources.
 
-Every run records which libraries were actually active. Open `diag/dashboard.html` and go to **Documentation > Lipid Library** to see the exact class and adduct coverage for that run, generated from the library definition in the version you ran. This page describes how the library is built and how to control it; the dashboard tells you what a specific run used.
+## Understanding the dashboard coverage table
+
+Open `diag/dashboard.html` and go to **Documentation > Lipid Library** to see the exact class and adduct coverage for that run. The dashboard shows two sections:
+
+**Libraries used in this run** lists which sources are active (internal LipidOracle, LipiDex, LipidBlast, and any extras you configured). This section reflects your `WORKFLOW` parameters.
+
+**Built-in class and adduct coverage** is a table showing every internal library entry for the ion polarity used in your run. The columns are:
+
+| Column | Meaning |
+|---|---|
+| Class name | Full lipid class name, e.g. `Phosphatidylcholine` |
+| Abbreviation | Standard shorthand, e.g. `PC` |
+| Adducts | Ion forms, e.g. `[M+H]+`, `[M+Na]+` |
+| Max level | Highest annotation level reachable for that adduct. Depends on whether MS2 is available. |
+| Carbon range | Minimum to maximum carbons in the library |
+| Double-bond range | Minimum to maximum double bonds in the library |
+| Unique species | Count of distinct lipid species for that class under the current oxidation settings |
+
+The table is generated from the library definition in the version you ran. The unique-species counts reflect your active `PARAM.ms1_maxO` and `PARAM.ms2_maxO` settings.
 
 ## What the library covers
 
-The internal library covers the major lipid classes implemented in LipidOracle. For each class it defines:
+The internal library covers the major lipid classes implemented in LipidOracle:
 
-- the class name and abbreviation
-- the relevant adducts, and the highest annotation level reachable for each
-- carbon-number and double-bond limits
-- the number of unique species generated under the current settings
+- **Glycerolipids:** TG, DG, MG
+- **Glycerophospholipids:** PC, PE, PI, PG, PA, PS, CL (cardiolipin), LPC, LPE, LPI, LPG, LPA, LPS
+- **Sphingolipids:** SM, Cer, HexCer, LacCer
+- **Sterols and sterol esters:** CE, Cholesterol
+- **Fatty acids and derivatives:** FA
 
-Two coverage notes worth knowing before you interpret results:
+Each class is defined with its structural limits (carbon and double-bond ranges). These limits are fixed in the library code and do not change with configuration.
 
-- **Ether-linked species** are represented by their own distinct library keys, not as a modifier on the diacyl entry.
-- **CL** has more limited structural resolution than the simpler classes.
+**Key coverage notes:**
 
-Exact class and adduct combinations are defined by the library code and evolve with it. The dashboard table is the authoritative list for any given run.
+- **Ether-linked species** are represented by their own distinct library keys. An ether-linked PC (`PC O-`) is a separate entry from a diacyl PC.
+- **Cardiolipin (CL)** has more limited structural resolution than simpler lipid classes. It is typically identified but with less fine-grained positional information.
+- The dashboard table is the authoritative list for any given run. If a class or adduct you expect to see is missing, it was not included in the version you ran.
+
+Exact class and adduct combinations are defined by the library code and evolve with each version of LipidOracle.
 
 ## Library sources
 
@@ -67,31 +89,54 @@ WORKFLOW:
 
 ## Oxidation
 
-The library can generate oxidised variants of its entries. Two separate limits control how far that goes, because the MS1 and MS2 libraries are built independently:
+The library can generate oxidised variants of each entry. Two separate limits control how far that goes, because the MS1 and MS2 libraries are built independently:
 
 | Parameter | Default | Controls |
 |---|---|---|
-| `PARAM.ms1_maxO` | `0` | Extra side-chain oxygens when building the MS1 library |
-| `PARAM.ms2_maxO` | `0` | Extra side-chain oxygens during MS2 isomer generation |
+| `PARAM.ms1_maxO` | `0` | Maximum side-chain oxygen atoms when building the MS1 library |
+| `PARAM.ms2_maxO` | `0` | Maximum side-chain oxygen atoms during MS2 isomer generation |
 
-Both default to `0`, which means no oxidised variants are generated at all. Raise them if you are looking for oxidised lipids, and expect the library and the runtime to grow accordingly. The oxidation policy actually applied in a run is printed on the dashboard's Lipid Library page.
+Both default to `0`, which means no oxidised variants are generated at all. Raise them if you are looking for oxidised lipids: `ms1_maxO: 1` includes mono-oxidised species in MS1 matching, and `ms2_maxO: 2` allows up to two oxygens per lipid during MS2 analysis.
+
+Oxidized variants are generated **per chain**, so a lipid with two chains can carry oxygens on both, up to the limit you set. The total library size and runtime grow with the oxygen limits you choose.
+
+The oxidation policy actually applied in a run is printed on the dashboard's Lipid Library page, so you can verify exactly which variants were considered for that analysis.
 
 ## Rarity
 
-Not every formally valid lipid is equally likely to be real. LipidOracle scores each library entry with a **rarity index**, summed from the rarity of the headgroup, the chain lengths (very long, very short, or odd-numbered chains all contribute), and the modifications present such as hydroxyl or epoxy groups.
+Not every formally valid lipid is equally likely to be real. LipidOracle assigns each library entry a **rarity index**, built as the sum of:
 
-- Rarity `0` is a common lipid, for example `PC 34:1`.
-- Rarity `2` or `3` marks lipids that are genuinely rare.
+- Rarity of the headgroup (e.g. cardiolipin is rarer than phosphatidylcholine)
+- Rarity of the chain lengths (very long chains, very short chains, or uneven chain pairs contribute)
+- Modifications present, such as hydroxyl or epoxy groups
 
-You can act on rarity in two different ways, and they behave very differently.
+The resulting rarity is an integer. Examples:
 
-**Filter before matching**, with `PARAM.rarity_max` (default `3`). Entries above the configured maximum are excluded from the library entirely, so rare lipids are never considered. Setting it to `0` keeps everything. Lowering it makes the run stricter and more conservative.
+- Rarity `0` is a common lipid: `PC 34:1` or `PE 36:2`
+- Rarity `1` is uncommon: `PC 40:0` or `PE O-40:6`
+- Rarity `2` or `3` marks genuinely rare lipids: `CL 72:8`, `Cer d18:1/24:0`, or unusual oxidised forms
 
-**Penalise during scoring**, with `PARAM.rarity_penalty` (default `0.15`). Leaving `rarity_max` at 2 or 3 keeps rare forms in play, and the penalty lowers their score instead of removing them. A rare lipid then survives into the annotation only when its `score_L2` is high enough to overcome the penalty. This is usually the better choice: you keep the evidence and let the data decide, rather than deciding in advance.
+You control rarity in two ways, and they behave very differently:
+
+**A priori filtering: `PARAM.rarity_max` (default `3`).** Entries above the configured maximum are excluded from the library *before* matching begins. Rare lipids are never considered at all. Setting `rarity_max: 0` keeps every entry regardless of rarity; setting `rarity_max: 1` removes all entries with rarity 2+ from the library. This approach is stricter and more conservative. Use it when you want to exclude unlikely lipids entirely.
+
+**A posteriori scoring: `PARAM.rarity_penalty` (default `0.15`).** Leaving `rarity_max` at 2 or 3 keeps rare forms in the library, but the penalty lowers their matching score. A rare lipid survives into the annotation only when its `score_L2` is high enough to overcome the penalty. This approach lets the data decide: the evidence is there, but weak matches on rare lipids are easier to filter out. This is usually the better choice: you keep all evidence and let score protect against noise rather than deciding in advance which lipids are worth considering.
+
+Both parameters are independent. You can use both (keep all entries in the library with `rarity_max: 0`, but apply a penalty with `rarity_penalty`), or just one.
 
 ## Where the library shows up in the output
 
-The `lib_src` and `lib_id` columns in `annotation.csv` record which library an annotation came from and which entry matched. `diag/lib_idlevel1.csv` and `diag/lib_idlevel2.csv` contain the library snapshots actually used for MS1 and MS2 matching in that run, which is the fastest way to check whether a species you expected was in scope at all.
+Every annotation in `annotation.csv` carries two columns that record its library source:
+
+- **`lib_src`**: which library this match came from (e.g. `lipidoracle`, `lipidex`, `lipidblast`, or the name of your custom CSV)
+- **`lib_id`**: the identifier or row index of the matched library entry
+
+The diagnostic output includes two full library snapshots:
+
+- **`diag/lib_idlevel1.csv`**: the exact MS1 library actually used for precursor matching in this run
+- **`diag/lib_idlevel2.csv`**: the exact MS2 library with fragments used for MS2 scoring
+
+These files are the fastest way to check whether a species you expected was in scope at all. If it does not appear in the snapshot, it was not considered for this run — either excluded by rarity filtering, outside the carbon/double-bond limits, not present in any active library source, or built for a different ion polarity.
 
 ## Related
 
