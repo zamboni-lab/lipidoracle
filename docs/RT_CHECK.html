@@ -119,7 +119,7 @@ SM,32,0,O2,61.5
 </code></pre>
 <p>External anchors are never trusted on their own time axis. They are first aligned onto this run's RT axis through a robust monotone warp, which is outlier-trimmed and leave-one-out validated. If too few pairs match, or the leave-one-out error is too high, the alignment is refused outright and the engine falls back to running anchor-free. A reference file from a different gradient will therefore not silently corrupt the fit.</p>
 <h2>The engines</h2>
-<h3><code>liri</code>, the default</h3>
+<h3><code>LiRI</code>, the default</h3>
 <p>LiRI does not regress retention time directly. It builds a <strong>retention index</strong>, a structural score in carbon-equivalent units:</p>
 <pre><code>h = C - a_db * DB - a_o * O
 </code></pre>
@@ -159,7 +159,7 @@ SM,32,0,O2,61.5
 <p>A hard rejection bypasses score protection. A soft rejection is forgiven for high-confidence, score-protected idlevel 2 annotations.</p>
 <p><strong>The deliberate limitation.</strong> A class with too few anchors of its own gets no prediction at all, rather than a rough guess. This was a design decision, not an oversight. Earlier versions shared a curve across classes, and two later attempts added a cross-class fallback for exactly the classes that lack their own anchors. All were tested on real data and reverted, because each reintroduced the same failure: a class with a genuinely different retention slope gets pulled into a curve shaped by steeper, unrelated classes and mispredicted by tens of seconds. Triacylglycerols are the recurring example, since their per-carbon retention gain flattens out where glycerophospholipids are still climbing steeply.</p>
 <p>The practical consequence is that LiRI cannot flag an implausible idlevel 1 hit in a class it has never confirmed by MS2 in this run or seen in <code>rt_ref</code>. FA and CE are the usual cases. LiRI is <strong>safe</strong>, in that it will not remove something wrongly for lack of evidence, but it is not <strong>complete</strong>, in that classes without evidence pass through unfiltered no matter how implausible their RT is.</p>
-<h3><code>hydra</code></h3>
+<h3><code>HYDRA</code></h3>
 <p>HYDRA takes the opposite side of the same tradeoff. It keeps one shared monotone calibration curve, but shares information across classes at the <em>feature</em> level rather than the curve level.</p>
 <p>Each candidate's structure is encoded as a feature vector: headgroup fragment composition (atom counts, charge, rings, built from the same fragments used to generate full structures, so PC, LPC, and SM all receive an identical phosphocholine descriptor), a lipid-family indicator, and chain-inventory terms held at fixed chemistry priors. A class with anchors gets its own learned offset on the shared curve. A class <em>without</em> anchors has its offset predicted by regression from other classes' learned offsets onto their shared descriptors, which is an approximate but chemistry-informed guess rather than no prediction at all.</p>
 <p>HYDRA also computes a <strong>pairwise relative z-score</strong> from a constraint graph over nearby anchors, checking whether a candidate's RT is ordered correctly relative to its neighbours and not just against the absolute curve.</p>
