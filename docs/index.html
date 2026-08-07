@@ -763,13 +763,13 @@ footer p { margin: 0; }
   <section class="hero">
     <div class="wrap">
       <div>
-        <h1>Lipid annotation from MS1 and MS2 data.</h1>
+        <h1>Lipid annotation from MS data.</h1>
         <p>
-          Annotation engine for CID, EAD, and UVPD spectra, with C=C position
-          and oxidation calls in acyl chains. Rust-based. Runs as a Docker container.
+          Complete annotation engine for CID, EAD, and UVPD spectra, from shortname to C=C 
+          and oxidation localization in acyl chains. Rust-based. Runs as a Docker container.
         </p>
         <p>
-          LipidOracle is developed by the Zamboni lab at ETH Zurich.
+          © Zamboni lab, ETH Zurich.
         </p>
         <div class="hero-cta">
           <a class="btn btn-primary" href="#install">Install</a>
@@ -956,10 +956,10 @@ footer p { margin: 0; }
             Every candidate structure is encoded as CXSMILES, a canonical SMILES string that explicitly marks uncertain double-bond, oxidation, or connectivity positions.
             The extension with <code>f:</code>, <code>m:</code>, <code>Sg:</code>, <code>ctu:</code> blocks enable to precisely declare ambiguity in a machine-readable format.
           </p>
-
           <pre class="cx"><span class="cx-name"><span class="cx-bb">DG</span> 18:1(9);OH(5)<span class="cx-ext">_</span><span class="cx-ac">18:1</span>;<span class="cx-ru">OH</span></span>
 <span class="cx-mute">↓</span>
-<span class="cx-bb">C(CO)(O<span class="cx-ext">*</span>)CO</span><span class="cx-ext">*</span><span class="cx-mute">.</span><span class="cx-ext">*</span>(=O)CCCC(O)CCCC=CCCCCCCC<span class="cx-mute">.</span><span class="cx-ext">*</span><span class="cx-ac">(=O)CC=CC</span><span class="cx-mute">.</span><span class="cx-ru">CO</span> <span class="cx-ext">|f:0.1,0.2</span>,<span class="cx-ac">Sg:n:29:a:ht,Sg:n:32:b:ht,</span><span class="cx-ru">m:33:27.28.29.30.31.32</span>,ctu:17,29| <span class="cx-ac">a+b=11</span></pre>
+<span class="cx-bb">C(CO)(O<span class="cx-ext">*</span>)CO</span><span class="cx-ext">*</span><span class="cx-mute">.</span><span class="cx-ext">*</span>C(=O)CCCC(O)CCCC=CCCCCCCCC<span class="cx-mute">.</span><span class="cx-ext">*</span><span class="cx-ac">C(=O)CC=CC</span><span class="cx-mute">.</span><span class="cx-ru">[OH]</span>
+<span class="cx-ext">|f:0.1,0.2</span>,<span class="cx-ac">Sg:n:32:a:ht,Sg:n:35:b:ht,</span><span class="cx-ru">m:36:32.33.34.35</span>,ctu:18,31| <span class="cx-ac">a+b=15</span></pre>
           <ul class="cx-key">
             <li><span class="cx-swatch cx-bb"></span>glycerol backbone</li>
             <li><span class="cx-swatch cx-ac"></span>acyl chain undefined C=C position</li>
@@ -1100,7 +1100,10 @@ footer p { margin: 0; }
 
 <footer>
   <div class="wrap">
-    <p>LipidOracle, Zamboni lab, ETH Zurich.</p>
+    <p><strong>LipidOracle v1.0.149</strong>, Zamboni lab, ETH Zurich.</p>
+    <p>
+      <a href="https://github.com/zamboni-lab/lipidoracle/blob/master/LICENSE">PolyForm Noncommercial 1.0.0</a>
+    </p>
     <p>
       <a href="https://github.com/zamboni-lab/lipidoracle/issues">Report an issue</a>
     </p>
