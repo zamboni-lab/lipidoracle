@@ -780,41 +780,40 @@ footer p { margin: 0; }
   <section id="levels">
     <div class="wrap">
       <div class="sec-head">
-        <h2>Every row carries its evidence</h2>
+        <h2>Traceable annotation evidence</h2>
         <p>
-          Identification levels say what a call is actually based on, so you can
-          filter the output to the confidence your work needs.
+          LipidOracle keeps track of what fragments were used to identify which molecular properties. The type of evidence is expressed in <code>idlevel</code> fields ranging from 1 to 4 with increasing granularity. Each level has its own confidence score.</p> 
+          <p>For each compounds and <code>idlevel</code>, <strong>Lipidoracle enumerates and scores all isomers, and produces a consolidated information rooted on the information that was found.</strong>
         </p>
       </div>
 
       <div class="levels">
         <div class="level level-1">
-          <span class="level-num">1</span>
+          <span class="level-num">IDLEVEL 1</span>
           <h3>Accurate mass</h3>
-          <p>Matched on m/z alone. MS2 fields are usually empty on these rows.</p>
+          <p>Matched on m/z alone. This happens when no MS2 is available. The detail doesn't go beyong lipid short names with total carbon and double bond numbers.</p>
         </div>
         <div class="level level-2">
-          <span class="level-num">2</span>
+          <span class="level-num">IDLEVEL 2</span>
           <h3>MS2 match</h3>
           <p>
             Ranked by <code>score_L2</code>, a hybrid of how well the weighted library
-            spectrum was matched and how well the spectra correlate. A modified cosine
-            score is reported alongside it for information.
+            spectrum was matched and how well the spectra correlate. It allows to confirm lipid class and possibly identify acyl chains and - rarely - regiosiomerism
           </p>
         </div>
         <div class="level level-3">
-          <span class="level-num">3</span>
-          <h3>Double-bond position</h3>
+          <span class="level-num">IDLEVEL 3</span>
+          <h3>Double-bond position in acyl chains</h3>
           <p>
-            The feature was analysed for C=C and oxidation position in its acyl chains.
+            With EAD or UVPD spectra, it's possible to analyse the feature for C=C and oxidation position in its acyl chains.
             <code>score_L3</code> compares simulated isomer spectra, with separate scoring
-            for lipids and for oxidised PUFAs.
+            for lipids and for oxidised PUFAs. The complexity increases with multiple chains.
           </p>
         </div>
         <div class="level level-4">
-          <span class="level-num">4</span>
-          <h3>Consolidated call</h3>
-          <p>One row per spectrum, aggregating the idlevel 3 candidates.</p>
+          <span class="level-num">IDLEVEL 4</span>
+          <h3>Consolidation of isomers</h3>
+          <p>One row per spectrum, aggregating all <code>idlevel 3</code> candidates into a single expression that captures consensus across thousands of candidates.</p>
         </div>
       </div>
     </div>
@@ -823,42 +822,37 @@ footer p { margin: 0; }
   <section id="rt">
     <div class="wrap">
       <div class="sec-head">
-        <h2>Pick how strict retention time gets</h2>
+        <h2>Report ambiguous data faithfully</h2>
         <p>
-          <code>WORKFLOW.rt_check</code> selects exactly one plausibility engine, applied
-          after MS1 and MS2 matching.
+          Multiple candidates often tie for the same score, or score within noise of each other. Rather than arbitrarily picking one, LipidOracle reports the ambiguity itself: CXSMILES depictions show every surviving candidate and the confidence score for each.
         </p>
       </div>
 
       <div class="engines">
         <div class="engine engine-lead">
-          <span class="engine-tag">Default</span>
-          <span class="engine-name">liri</span>
+          <span class="engine-tag">CXSMILES</span>
+          <span class="engine-name">Structural notation</span>
           <p>
-            Builds a retention index and fits a monotone map to RT independently for each
-            class and ether group, using only that group's own anchors. It is never wrong
-            for lack of evidence, but it stays silent on classes with too few anchors, so
-            it will not filter MS1-only hits for rare classes such as FAs and CEs.
+            Every candidate structure is encoded as CXSMILES, a canonical SMILES string that explicitly marks uncertain double-bond or oxidation positions. <code>C/C=C\C</code> means the double bond is definitely there; <code>C/C=C/C</code> with different stereochemistry means a different position or geometry was called. An unresolved position is marked; the notation makes ambiguity visible, not hidden.
           </p>
         </div>
         <div class="engine">
-          <span class="engine-name">hydra</span>
+          <span class="engine-name">score_L3 and score_L4</span>
           <p>
-            Shares one calibration curve across classes through a chemistry-informed feature
-            vector. It can flag implausible hits in classes with no anchors of their own,
-            and is more aggressive on idlevel 1.
+            idlevel 3 rows carry the individual score for each candidate. idlevel 4 aggregates them into a single consensus row with per-position probabilities, so you see at a glance: this position is 85% certain, that one is 42%. The full score distribution is in the diagnostic CSV if you want to audit the boundary cases.
           </p>
         </div>
         <div class="engine">
-          <span class="engine-name">legacy</span>
+          <span class="engine-name">Dashboard depictions</span>
           <p>
-            The two linear regressions ported from the Python codebase. Kept for rollback
-            and comparison. Measured removal precision is close to a coin flip.
+            Click a row in the dashboard to see the rendered structure from its CXSMILES. The MS2 match tab shows the mirror plot and highlights which fragments matched which cleavages, so you can see the evidence supporting (or failing to support) each position call.
           </p>
         </div>
         <div class="engine">
-          <span class="engine-name">False</span>
-          <p>Disables retention time checking entirely.</p>
+          <span class="engine-name">No false confidence</span>
+          <p>
+            When the data does not resolve a position, the output says so explicitly. A score of 0.52 on a C=C candidate means the candidate barely won; the depiction makes that visible. You decide whether 52% confidence is enough for your work.
+          </p>
         </div>
       </div>
     </div>
