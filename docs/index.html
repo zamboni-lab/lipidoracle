@@ -706,7 +706,7 @@ footer p { margin: 0; }
         </div>
         <div class="step">
           <div class="step-body">
-            <p><strong>Mount your folders and run.</strong></p>
+            <p><strong>Mount your folders and run.</strong> It's matter of seconds to get results!</p>
               <pre><code>docker run --rm \
   -v &lt;INPUT-FOLDER&gt;:/input \
   -v &lt;OUTPUT-FOLDER&gt;:/output \
@@ -719,7 +719,7 @@ footer p { margin: 0; }
             <strong>Review the parameters, then run again.</strong> Or simply trust the defaults, which use the internal LipidOracle library and a permissive RT checking routine (LiRI).</p>
               <pre><code>WORKFLOW:
   lipidoracle: True       <span class="c"># internal MS1/MS2 annotation engine</span>
-  acyl_analysis: False    <span class="c"># EAD/UVPD analysis of acyl chains</span>
+  acyl_analysis: False    <span class="c"># No EAD/UVPD analysis of acyl chains</span>
   rt_check: liri          <span class="c"># False | legacy | liri | hydra</span></code></pre>
           </div>
         </div>
