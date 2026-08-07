@@ -26,13 +26,59 @@ Open `diag/dashboard.html` and go to **Documentation > Lipid Library** to see th
 
 The table is generated from the library definition in the version you ran. The unique-species counts reflect your active `PARAM.ms1_maxO` and `PARAM.ms2_maxO` settings.
 
-Example entry from a typical run (positive ion mode):
+### Built-in LipidOracle v1.1 library
 
 | Class | Abbreviation | Adducts | Max level | Carbon range | Max DB | Unique species |
 |---|---|---|---|---|---|---|
-| Phosphatidylcholine | PC | `[M+H]+`, `[M+Na]+` | `[M+H]+`: MS2; `[M+Na]+`: MS2 | 2–60 | 6 | 337 |
-| Triacylglycerol | TG | `[M+NH4]+`, `[M+Na]+`, `[M+H]+` | all: MS2 | 14–60 | 12 | 461 |
-| Cardiolipin | CL | `[M+H]+`, `[M+Na]+`, `[M+NH4]+` | all: MS2 | 2–80 | 12 | 325 |
+| Bis(monoacylglycero)phosphate | BMP | `[M+H]+`; `[M+Na]+` | `[M+H]+`: MS1; `[M+Na]+`: MS1 | 12–60 | 6 | 313 |
+| Carnitine | CAR | `[M+H]+`; `[M+Na]+`; `[M+NH4]+` | `[M+H]+`: MS2; `[M+Na]+`: MS1; `[M+NH4]+`: MS1 | 2–30 | 6 | 83 |
+| Cholesteryl ester | CE | `[M+H]+`; `[M-H2O+H]+`; `[M+Na]+`; `[M+NH4]+` | `[M+H]+`: MS2; `[M-H2O+H]+`: MS1; `[M+Na]+`: MS1; `[M+NH4]+`: MS2 | 2–34 | 6 | 93 |
+| Cardiolipin | CL | `[M+H]+`; `[M+Na]+`; `[M+NH4]+` | all: MS2 | 2–80 | 12 | 325 |
+| Ceramide | Cer | `[M+H]+`; `[M-H2O+H]+`; `[M+Na]+`; `[M+K]+` | `[M+H]+`: MS2; `[M-H2O+H]+`: MS1; `[M+Na]+`: MS1; `[M+K]+`: MS1 | 2–60 | 6 | 133 |
+| Ceramide phosphate | CerP | `[M+H]+`; `[M+Na]+` | `[M+H]+`: MS2; `[M+Na]+`: MS1 | 12–60 | 6 | 133 |
+| Diacylglycerol | DG | `[M+NH4]+`; `[M+Na]+`; `[M+H]+`; `[M+K]+`; `[M+Li]+` | all: MS2 | 2–40 | 12 | 221 |
+| Digalactosyldiacylglycerol | DGDG | `[M+NH4]+`; `[M+Na]+` | `[M+NH4]+`: MS2; `[M+Na]+`: MS1 | 12–60 | 6 | 313 |
+| Fatty acid | FA | `[M+H]+`; `[M+Na]+`; `[M+NH4]+` | all: MS1 | 2–34 | 6 | 93 |
+| Ganglioside GD1 | GD1 | `[M+H]+` | MS1 | 2–60 | 6 | 0 |
+| Ganglioside GD2 | GD2 | `[M+H]+` | MS1 | 12–60 | 6 | 0 |
+| Ganglioside GD3 | GD3 | `[M+H]+` | MS1 | 12–60 | 6 | 0 |
+| Ganglioside GM1 | GM1 | `[M+H]+` | MS1 | 12–60 | 6 | 0 |
+| Ganglioside GM2 | GM2 | `[M+H]+` | MS1 | 12–60 | 6 | 0 |
+| Ganglioside GM3 | GM3 | `[M+H]+` | MS1 | 12–60 | 6 | 0 |
+| Ganglioside GT1 | GT1 | `[M+H]+` | MS1 | 12–60 | 6 | 0 |
+| Dihexosylceramide | Hex2Cer | `[M+H]+`; `[M+Na]+` | all: MS2 | 2–60 | 6 | 133 |
+| Trihexosylceramide | Hex3Cer | `[M+H]+`; `[M+Na]+` | all: MS2 | 12–60 | 6 | 133 |
+| Hexosylceramide | HexCer | `[M+H]+`; `[M+Na]+`; `[M+K]+` | `[M+H]+`: MS2; `[M+Na]+`: MS2; `[M+K]+`: MS1 | 12–60 | 6 | 133 |
+| Inositolphosphorylceramide | IPC | — | — | 2–60 | 6 | 0 |
+| Lysophosphatidic acid | LPA | `[M+H]+`; `[M+Na]+` | all: MS1 | 3–30 | 6 | 81 |
+| Lysophosphatidylcholine | LPC | `[M+H]+`; `[M+Na]+`; `[M+Li]+` | all: MS2 | 2–30, 3–30 | 6 | 83, 53, 0 |
+| Lysophosphatidylethanolamine | LPE | `[M+H]+`; `[M+Na]+` | `[M+H]+`: MS2; `[M+Na]+`: MS1 | 2–30, 3–30 | 6 | 83, 53, 0 |
+| Lysophosphatidylglycerol | LPG | `[M+H]+` | MS1 | 3–30 | 6 | 81 |
+| Lysophosphatidylinositol | LPI | `[M+H]+`; `[M+Na]+` | all: MS1 | 3–30 | 6 | 81 |
+| Lysophosphatidylserine | LPS | `[M+H]+` | MS1 | 3–30 | 6 | 81 |
+| Lactosylceramide | LacCer | `[M+H]+`; `[M+Na]+` | `[M+H]+`: MS2; `[M+Na]+`: MS1 | 12–60 | 6 | 0 |
+| Monoacylglycerol | MG | `[M+NH4]+`; `[M+Na]+`; `[M+H]+` | `[M+NH4]+`: MS2; `[M+Na]+`: MS1; `[M+H]+`: MS2 | 2–30 | 6 | 83 |
+| Monogalactosyldiacylglycerol | MGDG | `[M+NH4]+`; `[M+Na]+` | `[M+NH4]+`: MS2; `[M+Na]+`: MS1 | 12–60 | 6 | 264 |
+| Mannosylinositolphosphorylceramide bisphosphate | MIP2C | — | — | 12–60 | 6 | 0 |
+| Mannosylinositolphosphorylceramide | MIPC | — | — | 12–60 | 6 | 0 |
+| N-acylethanolamine | NAE | `[M+H]+`; `[M+Na]+`; `[M+NH4]+` | all: MS2 | 3–30 | 6 | 0 |
+| Phosphatidic acid | PA | `[M+H]+`; `[M+Na]+`; `[M+NH4]+` | `[M+H]+`: MS1; `[M+Na]+`: MS1; `[M+NH4]+`: MS2 | 3–60 | 6 | 337 |
+| Phosphatidylcholine | PC | `[M+H]+`; `[M+Na]+` | all: MS2 | 2–60, 12–60 | 6 | 337, 292, 0 |
+| Phosphatidylethanolamine | PE | `[M+H]+`; `[M+Na]+` | `[M+H]+`: MS2; `[M+Na]+`: MS1 | 2–60, 12–60 | 6 | 337, 292, 0 |
+| Phosphatidylglycerol | PG | `[M+H]+` | MS1 | 2–60 | 6 | 337 |
+| Phosphatidylinositol | PI | `[M+H]+`; `[M+Na]+`; `[M+NH4]+` | all: MS2 | 12–60 | 6 | 313 |
+| Phosphatidylinositol phosphate | PIP | `[M+H]+`; `[M+Na]+` | all: MS1 | 2–60 | 6 | 337 |
+| Phosphatidylinositol bisphosphate | PIP2 | `[M+H]+`; `[M+Na]+` | all: MS1 | 12–60 | 6 | 313 |
+| Phosphatidylinositol trisphosphate | PIP3 | `[M+H]+`; `[M+Na]+` | all: MS1 | 12–60 | 6 | 313 |
+| Phosphatidylserine | PS | `[M+H]+` | MS2 | 2–60 | 6 | 337 |
+| Sphingosine-1-phosphate | S1P | `[M+H]+`; `[M+Na]+` | `[M+H]+`: MS2; `[M+Na]+`: MS1 | 12–30 | 4 | 5 |
+| Sphingoid base | SB | `[M+H]+`; `[M+Na]+`; `[M+NH4]+` | `[M+H]+`: MS2; `[M+Na]+`: MS2; `[M+NH4]+`: MS1 | 2–34 | 6 | 0 |
+| Sulfohexosylceramide | SHexCer | `[M+H]+`; `[M+Na]+` | all: MS1 | 12–60 | 6 | 133 |
+| Sphingomyelin | SM | `[M+H]+`; `[M+Na]+` | all: MS2 | 28–60 | 6 | 103 |
+| Sulfoquinovosyldiacylglycerol | SQDG | `[M+NH4]+`; `[M+Na]+` | all: MS1 | 12–60 | 6 | 313 |
+| Sterol | ST | `[M+H]+`; `[M+H-H2O]+`; `[M+NH4]+`; `[M+Na]+` | all: MS2 | 2–34 | 6 | 91 |
+| Sphingosine | Sph | `[M+H]+`; `[M-H2O+H]+`; `[M+Na]+`; `[M+K]+` | `[M+H]+`: MS2; `[M-H2O+H]+`: MS1; `[M+Na]+`: MS1; `[M+K]+`: MS1 | 2–60 | 6 | 5 |
+| Triacylglycerol | TG | `[M+NH4]+`; `[M+Na]+`; `[M+H]+`; `[M+K]+`; `[M+Li]+` | all: MS2 | 14–60 | 12 | 461 |
 
 ## What the library covers
 
