@@ -64,153 +64,209 @@
             <a href="index.html">← Back to landing page</a>
         </nav>
         <article>
-
-# Retention-time consistency
-
-`WORKFLOW.rt_check` selects one retention-time plausibility filter, applied after MS1 and MS2 matching. It removes annotations that imply a structure whose expected retention time does not match where the peak actually eluted.
-
-```yaml
-WORKFLOW:
+<h1>Retention-time consistency</h1>
+<p><code>WORKFLOW.rt_check</code> selects one retention-time plausibility filter, applied after MS1 and MS2 matching. It removes annotations that imply a structure whose expected retention time does not match where the peak actually eluted.</p>
+<pre><code class="language-yaml">WORKFLOW:
   rt_check: liri   # False | 'legacy' | 'liri' (default) | 'hydra'
-```
-
-Exactly one engine ever runs. The value is case-insensitive, and `True` is accepted as a synonym for `'legacy'`. An unrecognised string fails configuration validation loudly rather than silently disabling the check.
-
-## Why it works
-
-Lipids are modular: a headgroup plus one or more acyl, alkyl, or sphingoid chains. In reversed-phase LC, retention is dominated by hydrophobic surface area, which follows that same modular structure fairly predictably. More carbons elute later, more double bonds or oxygens elute earlier, and a given headgroup shifts its whole homologous series by roughly a constant amount.
-
-That regularity is what makes the check possible. A wrong MS1 or MS2 annotation is often also a retention-time outlier. All three engines exploit this the same way at a high level: fit an expected-RT model from confident annotations **in this run**, optionally sharpened by an external anchor file, then flag candidates whose observed RT deviates from that expectation by more than a calibrated number of standard deviations. They differ substantially in how that model is built and how conservative the resulting judgement is.
-
-Every engine works without any external reference file, purely from this run's own confident annotations.
-
-## Reference data
-
-To reduce spurious identifications, we recommend building a retention-time library for each gradient, from standards or manually validated IDs. Point at it with:
-
-```yaml
-PARAM:
+</code></pre>
+<p>Exactly one engine ever runs. The value is case-insensitive, and <code>True</code> is accepted as a synonym for <code>'legacy'</code>. An unrecognised string fails configuration validation loudly rather than silently disabling the check.</p>
+<h2>Why it works</h2>
+<p>Lipids are modular: a headgroup plus one or more acyl, alkyl, or sphingoid chains. In reversed-phase LC, retention is dominated by hydrophobic surface area, which follows that same modular structure fairly predictably. More carbons elute later, more double bonds or oxygens elute earlier, and a given headgroup shifts its whole homologous series by roughly a constant amount.</p>
+<p>That regularity is what makes the check possible. A wrong MS1 or MS2 annotation is often also a retention-time outlier. All three engines exploit this the same way at a high level: fit an expected-RT model from confident annotations <strong>in this run</strong>, optionally sharpened by an external anchor file, then flag candidates whose observed RT deviates from that expectation by more than a calibrated number of standard deviations. They differ substantially in how that model is built and how conservative the resulting judgement is.</p>
+<p>Every engine works without any external reference file, purely from this run's own confident annotations.</p>
+<h2>Reference data</h2>
+<p>To reduce spurious identifications, we recommend building a retention-time library for each gradient, from standards or manually validated IDs. Point at it with:</p>
+<pre><code class="language-yaml">PARAM:
   rt_ref: '/output/rt_ref_2min.csv'
-```
-
-The CSV must have these columns:
-
-| Column | Meaning |
-|---|---|
-| `hg` | Lipid class |
-| `c` | Total number of carbons |
-| `db` | Total number of double bonds |
-| `mod` | Modifications, separated by spaces |
-| `rt` | Retention time in seconds |
-
-```csv
-hg,c,db,mod,rt
+</code></pre>
+<p>The CSV must have these columns:</p>
+<table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>hg</code></td>
+<td>Lipid class</td>
+</tr>
+<tr>
+<td><code>c</code></td>
+<td>Total number of carbons</td>
+</tr>
+<tr>
+<td><code>db</code></td>
+<td>Total number of double bonds</td>
+</tr>
+<tr>
+<td><code>mod</code></td>
+<td>Modifications, separated by spaces</td>
+</tr>
+<tr>
+<td><code>rt</code></td>
+<td>Retention time in seconds</td>
+</tr>
+</tbody>
+</table>
+<pre><code class="language-csv">hg,c,db,mod,rt
 SM,30,0,O2,53.46
 SM,40,0,O2,90.3
 SM,41,0,O2,93
 SM,42,0,O2,96.54
 SM,32,0,O2,61.5
-```
-
-External anchors are never trusted on their own time axis. They are first aligned onto this run's RT axis through a robust monotone warp, which is outlier-trimmed and leave-one-out validated. If too few pairs match, or the leave-one-out error is too high, the alignment is refused outright and the engine falls back to running anchor-free. A reference file from a different gradient will therefore not silently corrupt the fit.
-
-## The engines
-
-### `liri`, the default
-
-LiRI does not regress retention time directly. It builds a **retention index**, a structural score in carbon-equivalent units:
-
-```
-h = C - a_db * DB - a_o * O
-```
-
-then fits a **monotone map from `h` to RT** independently for each `(class, ether)` group, using only that group's own anchors. The `a_db` and `a_o` coefficients are fitted once globally across all anchors, since borrowing statistical power for that single ratio is safe. The retention curve itself is never shared between classes.
-
-Each candidate is graded into a tier that determines how forcefully it can be rejected:
-
-| Tier | Meaning | Can hard-reject |
-|---|---|---|
-| A | Exact structural match to an anchor | Yes |
-| B | Within its group's own anchored range | Yes |
-| C | Extrapolated beyond its group's anchored range | Soft only |
-| D | No local map exists for this `(class, ether)` | Never checked |
-
-A hard rejection bypasses score protection. A soft rejection is forgiven for high-confidence, score-protected idlevel 2 annotations.
-
-**The deliberate limitation.** A class with too few anchors of its own gets no prediction at all, rather than a rough guess. This was a design decision, not an oversight. Earlier versions shared a curve across classes, and two later attempts added a cross-class fallback for exactly the classes that lack their own anchors. All were tested on real data and reverted, because each reintroduced the same failure: a class with a genuinely different retention slope gets pulled into a curve shaped by steeper, unrelated classes and mispredicted by tens of seconds. Triacylglycerols are the recurring example, since their per-carbon retention gain flattens out where glycerophospholipids are still climbing steeply.
-
-The practical consequence is that LiRI cannot flag an implausible idlevel 1 hit in a class it has never confirmed by MS2 in this run or seen in `rt_ref`. FA and CE are the usual cases. LiRI is **safe**, in that it will not remove something wrongly for lack of evidence, but it is not **complete**, in that classes without evidence pass through unfiltered no matter how implausible their RT is.
-
-### `hydra`
-
-HYDRA takes the opposite side of the same tradeoff. It keeps one shared monotone calibration curve, but shares information across classes at the *feature* level rather than the curve level.
-
-Each candidate's structure is encoded as a feature vector: headgroup fragment composition (atom counts, charge, rings, built from the same fragments used to generate full structures, so PC, LPC, and SM all receive an identical phosphocholine descriptor), a lipid-family indicator, and chain-inventory terms held at fixed chemistry priors. A class with anchors gets its own learned offset on the shared curve. A class *without* anchors has its offset predicted by regression from other classes' learned offsets onto their shared descriptors, which is an approximate but chemistry-informed guess rather than no prediction at all.
-
-HYDRA also computes a **pairwise relative z-score** from a constraint graph over nearby anchors, checking whether a candidate's RT is ordered correctly relative to its neighbours and not just against the absolute curve.
-
-**What this buys.** HYDRA can flag an implausible hit in a class with zero anchors of its own, purely from shared chemistry. A real `FA 22:1;O2` annotation co-eluting at 114.5 s, where fatty acids that size normally elute around 25 s, was correctly caught and removed through this path. LiRI structurally cannot touch that case.
-
-**What it costs.** `rt_hydra_z_soft_ms1` (default `0.75`) applies a much stricter threshold specifically to idlevel 1 candidates, roughly four times tighter in z-units than the value used elsewhere. That is tight enough to reject a substantial fraction of correct annotations by chance alone. In practice HYDRA removes about twice what LiRI removes, and where the two disagree, HYDRA's extra removals are disproportionately *correct* annotations being discarded. Where LiRI and HYDRA agree that a candidate is bad, they are right about 93% of the time. Agreement between the two is a strong signal; HYDRA disagreeing with LiRI is not.
-
-If you use HYDRA, consider first raising `rt_hydra_z_soft_ms1` toward `rt_hydra_z_soft` (3.0), or setting it to `0` to disable the idlevel 1 special case entirely. That single default is the largest known lever on HYDRA's precision.
-
-### `legacy`
-
-Two independent linear regressions, always run together:
-
-- **Generic**: fits RT against elemental formula features (C, H, N, O, P, S, and degree of unsaturation) by robust ridge regression across all classes pooled, with one global tolerance (`rt_generic_cutoff`, default 60 s). Needs at least 24 training rows or it does nothing.
-- **Class-specific**: fits a separate `rt ~ C + DB + O` regression per class, plus two hardcoded structural rules for triacylglycerols eluting too early and lyso species eluting too late.
-
-This is a linear-in-RT model, so it assumes a roughly constant seconds-per-carbon slope. That assumption breaks down in the late gradient, and several hand-tuned exceptions in the code compensate for it rather than fixing the model shape.
-
-Measured removal precision is close to a coin flip. It is superseded by LiRI on every metric measured, and is kept for rollback and direct comparison rather than as a working default.
-
-## At a glance
-
-| | `legacy` | `liri` | `hydra` |
-|---|---|---|---|
-| Model shape | Linear in RT | Monotone index to RT, per class | Monotone index to RT, shared curve plus per-class offset |
-| Cross-class sharing | None, or full pooling | None, deliberately | Yes, through shared headgroup and family features |
-| Classes with no anchors | Crude or none | Never checked | Covered by offset regression |
-| Failure mode on thin data | Linear-model noise | Silence: never wrong, never complete | Possible over-removal, mostly at idlevel 1 |
-| Removal precision | ≈ 0.46 | ≈ 0.77 | ≈ 0.74 |
-| Missed anchors by more than 10 s | 27 | 3 | 3 |
-
-The precision and false-negative figures come from one audit on one dataset. Treat them as illustrating the *shape* of the difference, not as universal constants: they will shift with dataset and gradient.
-
-## Which to use
-
-**Default to `liri`.** It matches HYDRA's removal precision with a smaller, better-understood footprint and a hard safety property: a class it has no evidence for is never touched. The tradeoff you accept is that false annotations survive in classes without rich MS2 spectra.
-
-**Use `hydra` when idlevel 1 confidence matters most**, for example a study with many classes that rarely get MS2 confirmation, where LiRI's silence on those classes is a bigger practical problem than HYDRA's occasional over-removal elsewhere. Loosen `rt_hydra_z_soft_ms1` first.
-
-**Use `legacy` only for rollback or comparison.**
-
-**Use `False`** when validating a new sample type or gradient where you do not yet trust any RT-based judgement. Better to see everything MS1 and MS2 produced and filter by hand than to lose candidates silently to a model calibrated on the assumption that this run's chromatography is well behaved.
-
-Whichever engine you pick, validate any change to its thresholds against replicate reproducibility or an `rt_ref`-graded audit, not just against a single run's annotation counts.
-
-## Diagnostics
-
-Each engine writes a per-annotation trail to `diag/`, so you can see exactly why any given candidate was kept or removed.
-
-| Engine | File | Key columns |
-|---|---|---|
-| `legacy` | `rt_generic.csv`, `rt_class.csv` | `rt`, `rt_pred`, `err`, `cutoff`, `protected`, `severe`, `verdict` |
-| `liri` | `rt_liri.csv` | `ether`, `sum_c`, `sum_db`, `sum_o`, `rt`, `rt_pred`, `sigma`, `z`, `tier`, `verdict` |
-| `hydra` | `rt_hydra.csv`, `rt_hydra_anchors.csv` | `h`, `rt_pred`, `sigma_rt`, `z_abs`, `z_rel`, `tier`, `verdict`, `score_before`, `score_after` |
-
-## Related
-
-- [Parameters](PARAMETERS.html) for the full configuration reference
-- [The built-in MS2 library](LIPID_LIBRARY.html) for what is matched before this filter runs
-- [Installation and usage](DOCKER_README.html)
-
-## Questions and problems
-
-Report issues or ask questions at [github.com/zamboni-lab/lipidoracle/issues](https://github.com/zamboni-lab/lipidoracle/issues).
-        </article>
+</code></pre>
+<p>External anchors are never trusted on their own time axis. They are first aligned onto this run's RT axis through a robust monotone warp, which is outlier-trimmed and leave-one-out validated. If too few pairs match, or the leave-one-out error is too high, the alignment is refused outright and the engine falls back to running anchor-free. A reference file from a different gradient will therefore not silently corrupt the fit.</p>
+<h2>The engines</h2>
+<h3><code>liri</code>, the default</h3>
+<p>LiRI does not regress retention time directly. It builds a <strong>retention index</strong>, a structural score in carbon-equivalent units:</p>
+<pre><code>h = C - a_db * DB - a_o * O
+</code></pre>
+<p>then fits a <strong>monotone map from <code>h</code> to RT</strong> independently for each <code>(class, ether)</code> group, using only that group's own anchors. The <code>a_db</code> and <code>a_o</code> coefficients are fitted once globally across all anchors, since borrowing statistical power for that single ratio is safe. The retention curve itself is never shared between classes.</p>
+<p>Each candidate is graded into a tier that determines how forcefully it can be rejected:</p>
+<table>
+<thead>
+<tr>
+<th>Tier</th>
+<th>Meaning</th>
+<th>Can hard-reject</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A</td>
+<td>Exact structural match to an anchor</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>B</td>
+<td>Within its group's own anchored range</td>
+<td>Yes</td>
+</tr>
+<tr>
+<td>C</td>
+<td>Extrapolated beyond its group's anchored range</td>
+<td>Soft only</td>
+</tr>
+<tr>
+<td>D</td>
+<td>No local map exists for this <code>(class, ether)</code></td>
+<td>Never checked</td>
+</tr>
+</tbody>
+</table>
+<p>A hard rejection bypasses score protection. A soft rejection is forgiven for high-confidence, score-protected idlevel 2 annotations.</p>
+<p><strong>The deliberate limitation.</strong> A class with too few anchors of its own gets no prediction at all, rather than a rough guess. This was a design decision, not an oversight. Earlier versions shared a curve across classes, and two later attempts added a cross-class fallback for exactly the classes that lack their own anchors. All were tested on real data and reverted, because each reintroduced the same failure: a class with a genuinely different retention slope gets pulled into a curve shaped by steeper, unrelated classes and mispredicted by tens of seconds. Triacylglycerols are the recurring example, since their per-carbon retention gain flattens out where glycerophospholipids are still climbing steeply.</p>
+<p>The practical consequence is that LiRI cannot flag an implausible idlevel 1 hit in a class it has never confirmed by MS2 in this run or seen in <code>rt_ref</code>. FA and CE are the usual cases. LiRI is <strong>safe</strong>, in that it will not remove something wrongly for lack of evidence, but it is not <strong>complete</strong>, in that classes without evidence pass through unfiltered no matter how implausible their RT is.</p>
+<h3><code>hydra</code></h3>
+<p>HYDRA takes the opposite side of the same tradeoff. It keeps one shared monotone calibration curve, but shares information across classes at the <em>feature</em> level rather than the curve level.</p>
+<p>Each candidate's structure is encoded as a feature vector: headgroup fragment composition (atom counts, charge, rings, built from the same fragments used to generate full structures, so PC, LPC, and SM all receive an identical phosphocholine descriptor), a lipid-family indicator, and chain-inventory terms held at fixed chemistry priors. A class with anchors gets its own learned offset on the shared curve. A class <em>without</em> anchors has its offset predicted by regression from other classes' learned offsets onto their shared descriptors, which is an approximate but chemistry-informed guess rather than no prediction at all.</p>
+<p>HYDRA also computes a <strong>pairwise relative z-score</strong> from a constraint graph over nearby anchors, checking whether a candidate's RT is ordered correctly relative to its neighbours and not just against the absolute curve.</p>
+<p><strong>What this buys.</strong> HYDRA can flag an implausible hit in a class with zero anchors of its own, purely from shared chemistry. A real <code>FA 22:1;O2</code> annotation co-eluting at 114.5 s, where fatty acids that size normally elute around 25 s, was correctly caught and removed through this path. LiRI structurally cannot touch that case.</p>
+<p><strong>What it costs.</strong> <code>rt_hydra_z_soft_ms1</code> (default <code>0.75</code>) applies a much stricter threshold specifically to idlevel 1 candidates, roughly four times tighter in z-units than the value used elsewhere. That is tight enough to reject a substantial fraction of correct annotations by chance alone. In practice HYDRA removes about twice what LiRI removes, and where the two disagree, HYDRA's extra removals are disproportionately <em>correct</em> annotations being discarded. Where LiRI and HYDRA agree that a candidate is bad, they are right about 93% of the time. Agreement between the two is a strong signal; HYDRA disagreeing with LiRI is not.</p>
+<p>If you use HYDRA, consider first raising <code>rt_hydra_z_soft_ms1</code> toward <code>rt_hydra_z_soft</code> (3.0), or setting it to <code>0</code> to disable the idlevel 1 special case entirely. That single default is the largest known lever on HYDRA's precision.</p>
+<h3><code>legacy</code></h3>
+<p>Two independent linear regressions, always run together:</p>
+<ul>
+<li><strong>Generic</strong>: fits RT against elemental formula features (C, H, N, O, P, S, and degree of unsaturation) by robust ridge regression across all classes pooled, with one global tolerance (<code>rt_generic_cutoff</code>, default 60 s). Needs at least 24 training rows or it does nothing.</li>
+<li><strong>Class-specific</strong>: fits a separate <code>rt ~ C + DB + O</code> regression per class, plus two hardcoded structural rules for triacylglycerols eluting too early and lyso species eluting too late.</li>
+</ul>
+<p>This is a linear-in-RT model, so it assumes a roughly constant seconds-per-carbon slope. That assumption breaks down in the late gradient, and several hand-tuned exceptions in the code compensate for it rather than fixing the model shape.</p>
+<p>Measured removal precision is close to a coin flip. It is superseded by LiRI on every metric measured, and is kept for rollback and direct comparison rather than as a working default.</p>
+<h2>At a glance</h2>
+<table>
+<thead>
+<tr>
+<th></th>
+<th><code>legacy</code></th>
+<th><code>liri</code></th>
+<th><code>hydra</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Model shape</td>
+<td>Linear in RT</td>
+<td>Monotone index to RT, per class</td>
+<td>Monotone index to RT, shared curve plus per-class offset</td>
+</tr>
+<tr>
+<td>Cross-class sharing</td>
+<td>None, or full pooling</td>
+<td>None, deliberately</td>
+<td>Yes, through shared headgroup and family features</td>
+</tr>
+<tr>
+<td>Classes with no anchors</td>
+<td>Crude or none</td>
+<td>Never checked</td>
+<td>Covered by offset regression</td>
+</tr>
+<tr>
+<td>Failure mode on thin data</td>
+<td>Linear-model noise</td>
+<td>Silence: never wrong, never complete</td>
+<td>Possible over-removal, mostly at idlevel 1</td>
+</tr>
+<tr>
+<td>Removal precision</td>
+<td>≈ 0.46</td>
+<td>≈ 0.77</td>
+<td>≈ 0.74</td>
+</tr>
+<tr>
+<td>Missed anchors by more than 10 s</td>
+<td>27</td>
+<td>3</td>
+<td>3</td>
+</tr>
+</tbody>
+</table>
+<p>The precision and false-negative figures come from one audit on one dataset. Treat them as illustrating the <em>shape</em> of the difference, not as universal constants: they will shift with dataset and gradient.</p>
+<h2>Which to use</h2>
+<p><strong>Default to <code>liri</code>.</strong> It matches HYDRA's removal precision with a smaller, better-understood footprint and a hard safety property: a class it has no evidence for is never touched. The tradeoff you accept is that false annotations survive in classes without rich MS2 spectra.</p>
+<p><strong>Use <code>hydra</code> when idlevel 1 confidence matters most</strong>, for example a study with many classes that rarely get MS2 confirmation, where LiRI's silence on those classes is a bigger practical problem than HYDRA's occasional over-removal elsewhere. Loosen <code>rt_hydra_z_soft_ms1</code> first.</p>
+<p><strong>Use <code>legacy</code> only for rollback or comparison.</strong></p>
+<p><strong>Use <code>False</code></strong> when validating a new sample type or gradient where you do not yet trust any RT-based judgement. Better to see everything MS1 and MS2 produced and filter by hand than to lose candidates silently to a model calibrated on the assumption that this run's chromatography is well behaved.</p>
+<p>Whichever engine you pick, validate any change to its thresholds against replicate reproducibility or an <code>rt_ref</code>-graded audit, not just against a single run's annotation counts.</p>
+<h2>Diagnostics</h2>
+<p>Each engine writes a per-annotation trail to <code>diag/</code>, so you can see exactly why any given candidate was kept or removed.</p>
+<table>
+<thead>
+<tr>
+<th>Engine</th>
+<th>File</th>
+<th>Key columns</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>legacy</code></td>
+<td><code>rt_generic.csv</code>, <code>rt_class.csv</code></td>
+<td><code>rt</code>, <code>rt_pred</code>, <code>err</code>, <code>cutoff</code>, <code>protected</code>, <code>severe</code>, <code>verdict</code></td>
+</tr>
+<tr>
+<td><code>liri</code></td>
+<td><code>rt_liri.csv</code></td>
+<td><code>ether</code>, <code>sum_c</code>, <code>sum_db</code>, <code>sum_o</code>, <code>rt</code>, <code>rt_pred</code>, <code>sigma</code>, <code>z</code>, <code>tier</code>, <code>verdict</code></td>
+</tr>
+<tr>
+<td><code>hydra</code></td>
+<td><code>rt_hydra.csv</code>, <code>rt_hydra_anchors.csv</code></td>
+<td><code>h</code>, <code>rt_pred</code>, <code>sigma_rt</code>, <code>z_abs</code>, <code>z_rel</code>, <code>tier</code>, <code>verdict</code>, <code>score_before</code>, <code>score_after</code></td>
+</tr>
+</tbody>
+</table>
+<h2>Related</h2>
+<ul>
+<li><a href="PARAMETERS.html">Parameters</a> for the full configuration reference</li>
+<li><a href="LIPID_LIBRARY.html">The built-in MS2 library</a> for what is matched before this filter runs</li>
+<li><a href="index.html#install">Installation and usage</a></li>
+</ul>
+<h2>Questions and problems</h2>
+<p>Report issues or ask questions at <a href="https://github.com/zamboni-lab/lipidoracle/issues">github.com/zamboni-lab/lipidoracle/issues</a>.</p>
+</article>
     </div>
 </body>
 </html>

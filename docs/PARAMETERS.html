@@ -64,94 +64,225 @@
             <a href="index.html">← Back to landing page</a>
         </nav>
         <article>
-
-# LipidOracle Parameters Guide
-
-All LipidOracle runs are configured via a `lipidoracle.yaml` file. If the file is missing, LipidOracle will generate a default configuration and exit so you can review and customize it before running.
-
-## File Structure
-
-The YAML file has two main sections:
-
-```yaml
-VERSION: x.y.z                  # Tracks configuration version
+<h1>LipidOracle Parameters Guide</h1>
+<p>All LipidOracle runs are configured via a <code>lipidoracle.yaml</code> file. If the file is missing, LipidOracle will generate a default configuration and exit so you can review and customise it before running.</p>
+<h2>File Structure</h2>
+<p>The YAML file has two main sections:</p>
+<pre><code class="language-yaml">VERSION: x.y.z                  # Tracks configuration version
 
 WORKFLOW:                       # Workflow switches and choices
   ...
 
 PARAM:                          # Numeric and threshold parameters
   ...
-```
-
-## Workflow Section
-
-The `WORKFLOW` section controls which annotation engines run and how they operate.
-
-### Library & Engine Switches
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `lipidoracle` | bool | `True` | Enable the internal LipidOracle MS1/MS2 annotation engine |
-| `lipidex` | bool | `False` | Enable LipiDex library matching (experimental, fewer features) |
-| `lipidblast` | bool | `False` | Enable LipidBlast library matching (experimental, fewer features) |
-| `library_extra` | list | `[]` | Additional CSV-format lipid libraries (e.g., `['/path/to/custom.csv']`) |
-
-### Data Filtering
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `mz_target` | string | `''` | Optional m/z value list file to restrict analysis to specific features (useful for targeted runs) |
-
-### Advanced Analysis
-
-| Parameter | Type | Choices | Description |
-|-----------|------|---------|-------------|
-| `acyl_analysis` | bool | `False` or `True` | Analyze acyl chain composition (requires EAD or UVPD spectra); produces idlevel 3 and 4 matches |
-| `rt_check` | string | `False`, `'legacy'`, `'liri'`, `'hydra'` | Retention-time validation engine (see [RT Models](RT_CHECK.html) for details) |
-
-## PARAM Section
-
-The `PARAM` section sets numeric thresholds and limits. Key parameters are listed below; the default file includes others.
-
-### Identification & Scoring
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `rarity_max` | int | `3` | Maximum rarity index kept (lower = stricter, more conservative IDs; higher = includes rare chain compositions). Set to `0` to keep all. |
-| `rarity_penalty` | float | `0.15` | Score penalty applied to rare lipids instead of excluding them. See [Lipid library](LIPID_LIBRARY.html#rarity). |
-
-### MS1 Matching
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `ms1_tolerance` | float | `0.01` | Precursor m/z tolerance in Da (tolerance used for MS1 library matching) |
-| `ms1_maxO` | int | `0` | Maximum extra oxygen atoms added during MS1 library generation (for oxidized variants) |
-
-### MS2 Matching & Spectral Processing
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `ms2_noise_abs` | int | `10` | Absolute MS2 peak intensity floor (peaks below this are removed) |
-| `ms2_maxO` | int | `0` | Maximum extra oxygen atoms added during MS2 isomer generation |
-
-### EAD/UVPD Analysis
-
-When `acyl_analysis` is enabled, these parameters control the exhaustive C=C and oxidation position search:
-
-| Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
-| `ead_max_unsaturated` | int | `2` | Caps unsaturated chains per feature (higher = more candidates, slower runtime) |
-| `ead_max_oxygen` | int | `2` | Caps total oxygen atoms across all chains |
-| `ead_max_candidates` | int | `30000` | Candidates scored before stride-sampling. Do not lower below ~22,300 for oxidised work, or true structures can be sampled out silently. See [EAD](EAD.html). |
-| `ead_chain_cutoff` | float | `0.95` | Relative score threshold: retain isomers scoring ≥ (max_score × cutoff) |
-| `ead_min_score` | float | `0.2` | Absolute `score_L3` floor |
-
-## Quick-Start Defaults
-
-For most users, the default configuration works well:
-
-```yaml
-VERSION: 1.0.126
+</code></pre>
+<h2>Workflow Section</h2>
+<p>The <code>WORKFLOW</code> section controls which annotation engines run and how they operate.</p>
+<h3>Library &amp; Engine Switches</h3>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>lipidoracle</code></td>
+<td>bool</td>
+<td><code>True</code></td>
+<td>Enable the internal LipidOracle MS1/MS2 annotation engine</td>
+</tr>
+<tr>
+<td><code>lipidex</code></td>
+<td>bool</td>
+<td><code>False</code></td>
+<td>Enable LipiDex library matching (experimental, fewer features)</td>
+</tr>
+<tr>
+<td><code>lipidblast</code></td>
+<td>bool</td>
+<td><code>False</code></td>
+<td>Enable LipidBlast library matching (experimental, fewer features)</td>
+</tr>
+<tr>
+<td><code>library_extra</code></td>
+<td>list</td>
+<td><code>[]</code></td>
+<td>Additional CSV-format lipid libraries (e.g., <code>['/path/to/custom.csv']</code>)</td>
+</tr>
+</tbody>
+</table>
+<h3>Data Filtering</h3>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>mz_target</code></td>
+<td>string</td>
+<td><code>''</code></td>
+<td>Optional m/z value list file to restrict analysis to specific features (useful for targeted runs)</td>
+</tr>
+</tbody>
+</table>
+<h3>Advanced Analysis</h3>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Choices</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>acyl_analysis</code></td>
+<td>bool or string</td>
+<td><code>False</code>, <code>True</code>, <code>'v1'</code>, <code>'v2'</code></td>
+<td>Analyse acyl chain composition (requires EAD or UVPD spectra); produces idlevel 3 and 4 matches</td>
+</tr>
+<tr>
+<td><code>rt_check</code></td>
+<td>string</td>
+<td><code>False</code>, <code>'legacy'</code>, <code>'liri'</code>, <code>'hydra'</code></td>
+<td>Retention-time validation engine (see <a href="RT_CHECK.html">RT Models</a> for details)</td>
+</tr>
+</tbody>
+</table>
+<h2>PARAM Section</h2>
+<p>The <code>PARAM</code> section sets numeric thresholds and limits. Key parameters are listed below; the default file includes others.</p>
+<h3>Identification &amp; Scoring</h3>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>rarity_max</code></td>
+<td>int</td>
+<td><code>3</code></td>
+<td>Maximum rarity index kept (lower = stricter, more conservative IDs; higher = includes rare chain compositions). Set to <code>0</code> to keep all.</td>
+</tr>
+<tr>
+<td><code>rarity_penalty</code></td>
+<td>float</td>
+<td><code>0.15</code></td>
+<td>Score penalty applied to rare lipids instead of excluding them. See <a href="LIPID_LIBRARY.html#rarity">Lipid library</a>.</td>
+</tr>
+</tbody>
+</table>
+<h3>MS1 Matching</h3>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ms1_tolerance</code></td>
+<td>float</td>
+<td><code>0.01</code></td>
+<td>Precursor m/z tolerance in Da (tolerance used for MS1 library matching)</td>
+</tr>
+<tr>
+<td><code>ms1_maxO</code></td>
+<td>int</td>
+<td><code>0</code></td>
+<td>Maximum extra oxygen atoms added during MS1 library generation (for oxidised variants)</td>
+</tr>
+</tbody>
+</table>
+<h3>MS2 Matching &amp; Spectral Processing</h3>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ms2_noise_abs</code></td>
+<td>int</td>
+<td><code>10</code></td>
+<td>Absolute MS2 peak intensity floor (peaks below this are removed)</td>
+</tr>
+<tr>
+<td><code>ms2_maxO</code></td>
+<td>int</td>
+<td><code>0</code></td>
+<td>Maximum extra oxygen atoms added during MS2 isomer generation</td>
+</tr>
+</tbody>
+</table>
+<h3>EAD/UVPD Analysis</h3>
+<p>When <code>acyl_analysis</code> is enabled, these parameters control the exhaustive C=C and oxidation position search:</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ead_max_unsaturated</code></td>
+<td>int</td>
+<td><code>2</code></td>
+<td>Caps unsaturated chains per feature (higher = more candidates, slower runtime)</td>
+</tr>
+<tr>
+<td><code>ead_max_oxygen</code></td>
+<td>int</td>
+<td><code>2</code></td>
+<td>Caps total oxygen atoms across all chains</td>
+</tr>
+<tr>
+<td><code>ead_max_candidates</code></td>
+<td>int</td>
+<td><code>30000</code></td>
+<td>Candidates scored before stride-sampling. Do not lower below ~22,300 for oxidised work, or true structures can be sampled out silently. See <a href="EAD.html">EAD</a>.</td>
+</tr>
+<tr>
+<td><code>ead_chain_cutoff</code></td>
+<td>float</td>
+<td><code>0.95</code></td>
+<td>Relative score threshold: retain isomers scoring ≥ (max_score × cutoff)</td>
+</tr>
+<tr>
+<td><code>ead_min_score</code></td>
+<td>float</td>
+<td><code>0.2</code></td>
+<td>Absolute <code>score_L3</code> floor</td>
+</tr>
+</tbody>
+</table>
+<h2>Quick-Start Defaults</h2>
+<p>For most users, the default configuration works well:</p>
+<pre><code class="language-yaml">VERSION: x.y.z
 
 WORKFLOW:
   mz_target: ''
@@ -176,27 +307,25 @@ PARAM:
   ead_chain_cutoff: 0.95
   ead_min_score: 0.2
   # ... (other parameters with defaults)
-```
-
-### When to Customize
-
-- **Looser matching** (more candidates): lower `rarity_max`, increase `ms1_tolerance`
-- **Stricter matching** (fewer false positives): raise `rarity_max`, decrease `ms1_tolerance`, tighten `ead_chain_cutoff`
-- **Faster runs** (skip acyl analysis): keep `acyl_analysis: False` or lower `ead_max_candidates`
-- **Oxidized lipids**: raise `ms1_maxO` and `ms2_maxO` (default 0 means no oxidation variants)
-- **Targeted RT validation**: choose `rt_check: legacy` for the original two-regression model, or `rt_check: False` to skip RT filtering entirely
-
-## References
-
-- **Retention-time consistency**: see [RT_CHECK.md](RT_CHECK.html)
-- **Built-in MS2 library and rarity**: see [LIPID_LIBRARY.md](LIPID_LIBRARY.html)
-- **C=C and oxidation localisation**: see [EAD.md](EAD.html)
-- **Running LipidOracle**: see [DOCKER_README.md](DOCKER_README.html)
-
-## Questions and problems
-
-Report issues or ask questions at [github.com/zamboni-lab/lipidoracle/issues](https://github.com/zamboni-lab/lipidoracle/issues).
-        </article>
+</code></pre>
+<h3>When to customise</h3>
+<ul>
+<li><strong>Looser matching</strong> (more candidates): lower <code>rarity_max</code>, increase <code>ms1_tolerance</code></li>
+<li><strong>Stricter matching</strong> (fewer false positives): raise <code>rarity_max</code>, decrease <code>ms1_tolerance</code>, tighten <code>ead_chain_cutoff</code></li>
+<li><strong>Faster runs</strong> (skip acyl analysis): keep <code>acyl_analysis: False</code> or lower <code>ead_max_candidates</code></li>
+<li><strong>Oxidised lipids</strong>: raise <code>ms1_maxO</code> and <code>ms2_maxO</code> (default 0 means no oxidation variants)</li>
+<li><strong>Targeted RT validation</strong>: choose <code>rt_check: legacy</code> for the original two-regression model, or <code>rt_check: False</code> to skip RT filtering entirely</li>
+</ul>
+<h2>References</h2>
+<ul>
+<li><strong>Retention-time consistency</strong>: see <a href="RT_CHECK.html">Retention-time consistency</a></li>
+<li><strong>Built-in MS2 library and rarity</strong>: see <a href="LIPID_LIBRARY.html">The built-in MS2 library</a></li>
+<li><strong>C=C and oxidation localisation</strong>: see <a href="EAD.html">Locating C=C and oxidation by EAD</a></li>
+<li><strong>Running LipidOracle</strong>: see <a href="index.html#install">Installation and usage</a></li>
+</ul>
+<h2>Questions and problems</h2>
+<p>Report issues or ask questions at <a href="https://github.com/zamboni-lab/lipidoracle/issues">github.com/zamboni-lab/lipidoracle/issues</a>.</p>
+</article>
     </div>
 </body>
 </html>
