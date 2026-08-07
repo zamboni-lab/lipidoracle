@@ -71,16 +71,22 @@
   acyl_analysis: v2   # False | v1 | v2 (experimental)
 </code></pre>
 <p>This step is off by default. It requires EAD spectra: it cannot extract positional information from CID or other dissociation methods.</p>
-<h2>What goes in and what comes out</h2>
-<p><strong>Input</strong> is annotations at idlevel 2 or above, plus idlevel 1 single-chain species that still have something to localise when <code>PARAM.include_ms1_monochain</code> is enabled (default <code>true</code>).</p>
-<p><strong>Output</strong> is two new annotation levels:</p>
-<ul>
-<li><strong>idlevel 3</strong>, one row per surviving position candidate. Several isomers can survive for the same feature.</li>
-<li><strong>idlevel 4</strong>, one consensus row per feature, reporting positions as percentages across the surviving candidates.</li>
-</ul>
+<h2>The two engines</h2>
 <p>The <code>score_L3</code> column carries the localisation score, and <code>score_L3_data</code> and <code>ms2_evidence</code> record the supporting evidence. The mapping between raw scores and the reported 0–1 range differs between engines, so <strong>equal <code>score_L3</code> values from different engines are not equivalent evidence</strong> and should not be compared across runs configured differently.</p>
-<h2>The oxygen chemistry</h2>
-<p>A <code>;O</code> suffix in a lipid name gives an oxygen <strong>count</strong>, not a chemistry. Since every hypothesis is anchored on a measured precursor, each candidate must be isobaric, so each oxygen group has to pay for itself:</p>
+<h3>v1: Fixed ladder, non-oxidised</h3>
+<p>v1 is the published method, described in full in Wu et al, <em>Analyst</em>, 2025, <a href="https://doi.org/10.1039/d5an00567a">10.1039/d5an00567a</a>. For the experimental background, why EAD cleaves bonds that CID leaves intact and what the resulting fragment ladder looks like, see <a href="https://metabolomics.blog/2024/04/ead-and-lipidomics/">On the benefits and role of electron-induced dissociation in lipidomics</a>.</p>
+<p>It runs in four steps:</p>
+<ol>
+<li><strong>Enumerate the hypotheses.</strong> For a chain of <em>C</em> carbons carrying <em>n</em> double bonds, every placement of those <em>n</em> bonds across positions 2 to <em>C</em>−1 is generated, excluding adjacent placements. Saturated chains, and chains under four carbons, yield a single trivial variant.</li>
+<li><strong>Simulate the ladder.</strong> Each hypothesis is walked bond by bond from the methyl tail toward the carboxyl head. An ordinary step loses CH₂; a step crossing a double bond loses CH instead, and that is what shifts the ladder's spacing at the double bond. Every bond emits three neutral-loss variants, labelled <code>0</code>, <code>-H</code> and <code>+H</code> (losses of CH₂, CH₃ and CH), weighted 10, 3 and 1 so the homolytic cleavage dominates.</li>
+<li><strong>Weight by distance to the nearest double bond.</strong> Each step's weight is scaled by a hand-tuned array indexed on how many bonds separate it from the nearest double bond, counted on both sides: 0.5 at the bond itself, 1 one bond away, <strong>6 at two bonds</strong>, 1 at three, 0.5 at four and five, and 1 beyond. That spike at two bonds is where the positional signal actually lives. Near the head the <code>0</code> and <code>-H</code> weights swap, and the last two bonds take a fixed bonus.</li>
+<li><strong>Match and score.</strong> Predicted fragments from all chains are pooled and binned by m/z, with coincident masses summing their weights. Observed peaks are matched one-to-one against them within tolerance, by maximum bipartite matching, so no peak is counted twice. <code>score_L3</code> then blends two terms: the share of predicted weight that found a match, and the Pearson correlation between measured intensities and predicted weights across the matched peaks.</li>
+</ol>
+<p>v1 does <strong>not</strong> support oxidised lipids at all. Oxidation parameters are ignored; chains with <code>;O</code> are filtered out entirely.</p>
+<p><strong>Validation:</strong> tuned and regression-tested on non-oxidised glycerolipids (<code>ara-ead</code> fixture, 114 spectra of arachidonic acid fatty acids).</p>
+<h3>v2: Exact formulas, oxidised, experimental</h3>
+<p>v2 takes the opposite approach: computes exact elemental-formula losses for every cleavage, and scores independently against each observed peak (not one-to-one matching). It supports hydroxyl and ketone oxygens natively.</p>
+<p><strong>Oxygen chemistry.</strong> A <code>;O</code> suffix in a lipid name gives an oxygen <strong>count</strong>, not a chemistry. Since every hypothesis is anchored on a measured precursor, each candidate must be isobaric, so each oxygen group has to pay for itself:</p>
 <table>
 <thead>
 <tr>
@@ -104,56 +110,7 @@
 </table>
 <p>So <code>20:4;O</code> admits <code>20:4;OH</code> and <code>20:3;oxo</code>, but never <code>20:4;oxo</code>. An oxygenated carbon may not be sp2, so no double bond may land on or adjacent to it.</p>
 <p>Two consequences worth stating plainly: the supported oxygen space is deliberately limited to hydroxyl and ketone readings, and hydroperoxide or extra-carboxyl interpretations are <strong>not</strong> enumerated at all.</p>
-<h2>The two engines</h2>
-<h3>v1: Fixed ladder, non-oxidised</h3>
-<p>v1 walks the chain from tail to head, losing a fixed unit (CH₂, or CH/CH₃ near a double bond) per step. It emits three neutral-loss variants per step (<code>0</code>, <code>-H</code>, <code>+H</code>). Step weight comes from a hand-tuned distance array with a spike at 2 bonds away from the nearest double bond.</p>
-<p>v1 does <strong>not</strong> support oxidised lipids at all. Oxidation parameters are ignored; chains with <code>;O</code> are filtered out entirely.</p>
-<p><strong>Validation:</strong> tuned and regression-tested on non-oxidised glycerolipids (<code>ara-ead</code> fixture, 114 spectra of arachidonic acid fatty acids).</p>
-<p><strong>Reference:</strong> published in Wu et al, <em>Analyst</em>, 2025, <a href="https://doi.org/10.1039/d5an00567a">10.1039/d5an00567a</a>.</p>
-<h3>v2: Exact formulas, oxidised, experimental</h3>
-<p>v2 takes the opposite approach: computes exact elemental-formula losses for every cleavage, and scores independently against each observed peak (not one-to-one matching). It supports hydroxyl and ketone oxygens natively.</p>
-<p>v2 is <strong>experimental</strong>. It is validated on two test datasets but has known limitations (see below). Measured performance:</p>
-<table>
-<thead>
-<tr>
-<th>Dataset</th>
-<th>Scans</th>
-<th>Double-bond accuracy</th>
-<th>Hydroxyl accuracy</th>
-<th>Notes</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>HETE (hydroxylated FA)</td>
-<td>96</td>
-<td>79%</td>
-<td>N/A</td>
-<td>Rust v2 vs Python: Rust 79%, Python 77%</td>
-</tr>
-<tr>
-<td>ARA (polyunsaturated FA)</td>
-<td>114</td>
-<td>83%</td>
-<td>N/A</td>
-<td>Rust v2: 83%, Python: 75%</td>
-</tr>
-<tr>
-<td>ARA (excluding NH₄ adducts)</td>
-<td>82</td>
-<td>100%</td>
-<td>N/A</td>
-<td>Both engines reach 100% when NH₄ is excluded</td>
-</tr>
-</tbody>
-</table>
-<p>The remaining mismatches are concentrated in adduct-specific cases:</p>
-<ul>
-<li><strong>Na-adduct spectra</strong> (HETE): several isomers fail to localise correctly</li>
-<li><strong>NH₄-adduct spectra</strong> (ARA): both Rust and Python fail; the modelling gap is documented (fragments do not retain the mobile ammonium charge)</li>
-<li><strong>AMP-derivatised FA</strong> (mixed): mostly correct, scattered failures</li>
-</ul>
-<p><strong>Important:</strong> v2 is suitable for research and methods development. It is not a production-ready engine. Use it when you need to localise oxidised lipids and understand its failure modes.</p>
+<p>v2 is <strong>experimental</strong>.</p>
 <h2>Configuration</h2>
 <table>
 <thead>
@@ -212,21 +169,8 @@
 </tbody>
 </table>
 <p><strong><code>ead_max_candidates</code> deserves particular care.</strong> A single oxidised token such as <code>20:4;O</code> enumerates roughly 22,300 candidates. If the cap sits below that, the true structure can be stride-sampled out of consideration <em>before scoring ever runs</em>. The failure is silent and looks identical to a scoring failure in the output. The default of 30,000 is set above the oxidised case deliberately: lower it only if you understand the space you are searching.</p>
-<h2>Known limitations</h2>
-<p><strong>v2 hydroxyl vs ketone ambiguity.</strong> The <code>;O</code> count data model cannot always distinguish hydroxyl from ketone from spectral evidence alone. On a validation set that is 100% hydroxyl by construction, v2's top candidate is still a ketone-branch structure in roughly 30% of spectra. This is a genuine data-driven ambiguity, not a scoring bug.</p>
-<p><strong>No ketone ground truth.</strong> Every oxygen-type figure is measured on hydroxyl-only material. Any bias toward hydroxyl reading scores well in validation while being untestable. Treat ketone calls with caution.</p>
-<p><strong><code>[M+NH4]+</code> precursors of underivatized free fatty acids fail completely</strong> (both engines). Fragments do not retain the ammonium charge that losses are anchored on, and a large share of signal sits in a hydrocarbon-cation series neither engine can model. Derivatised or sodiated spectra of the same lipids do not show this failure. Prefer a different adduct.</p>
-<p><strong>Tuned constants come from a narrow fixture set</strong>, pooled across derivatisation chemistries (AMP and Na-adduct, mainly) that behave very differently. Transfer to other chain lengths, derivatisations, or glycerolipids is an assumption rather than a validated result.</p>
 <h2>Diagnostics</h2>
 <p><code>diag/annotation_idlevel3.csv</code> lists the retained positional candidates and <code>diag/annotation_idlevel4.csv</code> the per-feature consensus. In the dashboard, the <strong>MS2 match</strong> tab shows the mirror plot for a selected candidate, and clicking a peak maps it onto the structure so you can see which cleavage supports a given position call.</p>
-<h2>Related</h2>
-<ul>
-<li><a href="PARAMETERS.html">Parameters</a> for the full configuration reference</li>
-<li><a href="LIPID_LIBRARY.html">The built-in MS2 library</a> for what is identified before this step runs</li>
-<li><a href="RT_CHECK.html">Retention-time consistency</a></li>
-</ul>
-<h2>Questions and problems</h2>
-<p>Report issues or ask questions at <a href="https://github.com/zamboni-lab/lipidoracle/issues">github.com/zamboni-lab/lipidoracle/issues</a>.</p>
 </article>
     </div>
 </body>

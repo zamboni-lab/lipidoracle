@@ -174,56 +174,6 @@ SM,32,0,O2,61.5
 </ul>
 <p>This is a linear-in-RT model, so it assumes a roughly constant seconds-per-carbon slope. That assumption breaks down in the late gradient, and several hand-tuned exceptions in the code compensate for it rather than fixing the model shape.</p>
 <p>Measured removal precision is close to a coin flip. It is superseded by LiRI on every metric measured, and is kept for rollback and direct comparison rather than as a working default.</p>
-<h2>At a glance</h2>
-<table>
-<thead>
-<tr>
-<th></th>
-<th><code>legacy</code></th>
-<th><code>liri</code></th>
-<th><code>hydra</code></th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Model shape</td>
-<td>Linear in RT</td>
-<td>Monotone index to RT, per class</td>
-<td>Monotone index to RT, shared curve plus per-class offset</td>
-</tr>
-<tr>
-<td>Cross-class sharing</td>
-<td>None, or full pooling</td>
-<td>None, deliberately</td>
-<td>Yes, through shared headgroup and family features</td>
-</tr>
-<tr>
-<td>Classes with no anchors</td>
-<td>Crude or none</td>
-<td>Never checked</td>
-<td>Covered by offset regression</td>
-</tr>
-<tr>
-<td>Failure mode on thin data</td>
-<td>Linear-model noise</td>
-<td>Silence: never wrong, never complete</td>
-<td>Possible over-removal, mostly at idlevel 1</td>
-</tr>
-<tr>
-<td>Removal precision</td>
-<td>≈ 0.46</td>
-<td>≈ 0.77</td>
-<td>≈ 0.74</td>
-</tr>
-<tr>
-<td>Missed anchors by more than 10 s</td>
-<td>27</td>
-<td>3</td>
-<td>3</td>
-</tr>
-</tbody>
-</table>
-<p>The precision and false-negative figures come from one audit on one dataset. Treat them as illustrating the <em>shape</em> of the difference, not as universal constants: they will shift with dataset and gradient.</p>
 <h2>Which to use</h2>
 <p><strong>Default to <code>liri</code>.</strong> It matches HYDRA's removal precision with a smaller, better-understood footprint and a hard safety property: a class it has no evidence for is never touched. The tradeoff you accept is that false annotations survive in classes without rich MS2 spectra.</p>
 <p><strong>Use <code>hydra</code> when idlevel 1 confidence matters most</strong>, for example a study with many classes that rarely get MS2 confirmation, where LiRI's silence on those classes is a bigger practical problem than HYDRA's occasional over-removal elsewhere. Loosen <code>rt_hydra_z_soft_ms1</code> first.</p>
@@ -232,40 +182,6 @@ SM,32,0,O2,61.5
 <p>Whichever engine you pick, validate any change to its thresholds against replicate reproducibility or an <code>rt_ref</code>-graded audit, not just against a single run's annotation counts.</p>
 <h2>Diagnostics</h2>
 <p>Each engine writes a per-annotation trail to <code>diag/</code>, so you can see exactly why any given candidate was kept or removed.</p>
-<table>
-<thead>
-<tr>
-<th>Engine</th>
-<th>File</th>
-<th>Key columns</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>legacy</code></td>
-<td><code>rt_generic.csv</code>, <code>rt_class.csv</code></td>
-<td><code>rt</code>, <code>rt_pred</code>, <code>err</code>, <code>cutoff</code>, <code>protected</code>, <code>severe</code>, <code>verdict</code></td>
-</tr>
-<tr>
-<td><code>liri</code></td>
-<td><code>rt_liri.csv</code></td>
-<td><code>ether</code>, <code>sum_c</code>, <code>sum_db</code>, <code>sum_o</code>, <code>rt</code>, <code>rt_pred</code>, <code>sigma</code>, <code>z</code>, <code>tier</code>, <code>verdict</code></td>
-</tr>
-<tr>
-<td><code>hydra</code></td>
-<td><code>rt_hydra.csv</code>, <code>rt_hydra_anchors.csv</code></td>
-<td><code>h</code>, <code>rt_pred</code>, <code>sigma_rt</code>, <code>z_abs</code>, <code>z_rel</code>, <code>tier</code>, <code>verdict</code>, <code>score_before</code>, <code>score_after</code></td>
-</tr>
-</tbody>
-</table>
-<h2>Related</h2>
-<ul>
-<li><a href="PARAMETERS.html">Parameters</a> for the full configuration reference</li>
-<li><a href="LIPID_LIBRARY.html">The built-in MS2 library</a> for what is matched before this filter runs</li>
-<li><a href="index.html#install">Installation and usage</a></li>
-</ul>
-<h2>Questions and problems</h2>
-<p>Report issues or ask questions at <a href="https://github.com/zamboni-lab/lipidoracle/issues">github.com/zamboni-lab/lipidoracle/issues</a>.</p>
 </article>
     </div>
 </body>
