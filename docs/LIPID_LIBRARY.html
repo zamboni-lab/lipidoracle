@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The built-in MS2 library – LipidOracle</title>
+    <style>
+        :root {
+            --bg: #f6f7f9;
+            --panel: #ffffff;
+            --text: #10151c;
+            --text-2: #45505f;
+            --muted: #6b7688;
+            --border: #e3e7ed;
+            --accent: #2f6df6;
+            --accent-text: #1b4fd0;
+            --radius: 12px;
+        }
+        @media (prefers-color-scheme: dark) {
+            :root:not([data-theme="light"]) {
+                --bg: #0c1017;
+                --panel: #141a24;
+                --text: #e8edf5;
+                --text-2: #b3becd;
+                --muted: #8593a6;
+                --border: #242d3b;
+                --accent: #6f9bff;
+                --accent-text: #a8c2ff;
+            }
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+        }
+        .wrap {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        h1 { font-size: 2.5rem; margin-bottom: 1rem; line-height: 1.2; }
+        h2 { font-size: 1.75rem; margin: 3rem 0 1rem 0; color: var(--accent-text); }
+        h3 { font-size: 1.25rem; margin: 1.5rem 0 0.75rem 0; }
+        p { margin-bottom: 1rem; max-width: 65ch; color: var(--text-2); }
+        a { color: var(--accent); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        code { background: var(--panel); padding: 0.2em 0.4em; border-radius: 4px; font-family: monospace; font-size: 0.95em; }
+        pre { background: var(--panel); padding: 1rem; border-radius: var(--radius); overflow-x: auto; margin: 1rem 0; border: 1px solid var(--border); }
+        pre code { background: none; padding: 0; }
+        table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; border: 1px solid var(--border); }
+        thead { background: var(--panel); border-bottom: 1px solid var(--border); }
+        th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--border); }
+        th { font-weight: 600; color: var(--accent-text); }
+        ul, ol { margin-left: 1.5rem; margin-bottom: 1rem; }
+        nav { display: flex; gap: 1.5rem; margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border); }
+        nav a { font-size: 0.95rem; color: var(--text-2); }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <nav>
+            <a href="index.html">← Back to landing page</a>
+        </nav>
+        <article>
+
+        </article>
+    </div>
+</body>
+</html>
