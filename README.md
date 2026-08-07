@@ -46,3 +46,9 @@ docker run --rm \
   -v $PWD/out:/output \
   zambonilab/lipidoracle
 ```
+
+## License
+
+LipidOracle is licensed under the [PolyForm Noncommercial License 1.0.0](LICENSE). It may be used, modified, and redistributed for non-commercial purposes, subject to the license terms. Commercial use requires separate permission from the copyright holder.
+
+See the [Docker guide](docker_readme.md) for installation and usage details.
