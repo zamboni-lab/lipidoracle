@@ -23,10 +23,8 @@ docker run --rm \
   zambonilab/lipidoracle
 ```
 
-Put the `.mgf` in the input folder. If no `lipidoracle.yaml` is found in either
-folder, LipidOracle writes a default one to the output folder and stops, so you
-can review it before the real run. The defaults use the internal library and the
-LiRI retention-time check. See
+If no `lipidoracle.yaml` is found in either input or output folder, LipidOracle writes a default one to the output folder and stops, so you
+can review it before the real run. The defaults use the internal library and the LiRI retention-time check. See
 [Parameters](https://zamboni-lab.github.io/lipidoracle/PARAMETERS.html) for the
 full reference.
 
