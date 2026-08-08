@@ -10,8 +10,7 @@ as a Docker image.
 
 ## Run
 
-Input is a single `.mgf` carrying both MS1 and MS2 scans. Settings live in a
-`lipidoracle.yaml`.
+Input is a single `.mgf` carrying both MS1 and MS2 scans, stored in a local folder `<INPUT-FOLDER>`. 
 
 Ensure Docker is installed locally. Refer to [Docker Desktop](https://docs.docker.com/desktop/) for installation instructions.
 
