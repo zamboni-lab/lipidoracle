@@ -38,14 +38,9 @@ Two ready-to-run datasets in `testdata/`:
 | `cid/` | 9,948 | 32 MB | CID run, annotation to idlevel 1–2. Completes in seconds. |
 | `ead/` | 38,255 | 12 MB | EAD run. Set `acyl_analysis: v1` to localise C=C. |
 
-Mount either folder as the input:
+## Docker installation
 
-```bash
-docker run --rm \
-  -v $PWD/testdata/ead:/input \
-  -v $PWD/out:/output \
-  zambonilab/lipidoracle
-```
+Refer to [Docker Desktop](https://docs.docker.com/desktop/).
 
 ## License
 
