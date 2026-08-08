@@ -8,10 +8,12 @@ retention-time validation, and C=C / oxidation localisation from EAD or UVPD dat
 This repository holds the documentation site and the test data. The engine ships
 as a Docker image.
 
-## Docker
+## Run
 
 Input is a single `.mgf` carrying both MS1 and MS2 scans. Settings live in a
 `lipidoracle.yaml`.
+
+Ensure Docker is installed locally. Refer to [Docker Desktop](https://docs.docker.com/desktop/) for installation instructions.
 
 ```bash
 docker pull zambonilab/lipidoracle
@@ -37,10 +39,6 @@ Two ready-to-run datasets in `testdata/`:
 | --- | ---: | ---: | --- |
 | `cid/` | 9,948 | 32 MB | CID run, annotation to idlevel 1–2. Completes in seconds. |
 | `ead/` | 38,255 | 12 MB | EAD run. Set `acyl_analysis: v1` to localise C=C. |
-
-## Docker installation
-
-Refer to [Docker Desktop](https://docs.docker.com/desktop/).
 
 ## License
 
