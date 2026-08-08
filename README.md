@@ -36,7 +36,7 @@ Two ready-to-run datasets in `testdata/`:
 | Folder | Spectra | Size | Notes |
 | --- | ---: | ---: | --- |
 | `cid/` | 9,948 | 32 MB | CID run, annotation to idlevel 1–2. Completes in seconds. |
-| `ead/` | 38,255 | 12 MB | EAD run. Set `acyl_analysis: v2` to localise C=C and oxidation positions; takes a few minutes. |
+| `ead/` | 38,255 | 12 MB | EAD run. Set `acyl_analysis: v1` to localise C=C. |
 
 Mount either folder as the input:
 
