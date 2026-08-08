@@ -64,19 +64,52 @@
             <a href="index.html">← Back to landing page</a>
         </nav>
         <article>
-<h1>Retention-time consistency</h1>
-<p><code>WORKFLOW.rt_check</code> selects one retention-time plausibility filter, applied after MS1 and MS2 matching. It removes annotations that imply a structure whose expected retention time does not match where the peak actually eluted.</p>
+<h1>Retention-time checking</h1>
+<p>After MS1 and MS2 matching, the selected RT engine fits a model of expected retention time from confident annotations in this run, optionally refined by an external anchor file. It then applies its own decision layer to flag and remove implausible hits—candidates whose structure does not match their observed retention time.</p>
 <pre><code class="language-yaml">WORKFLOW:
-  rt_check: liri   # False | 'legacy' | 'liri' (default) | 'hydra'
+  rt_check: liri               # False | 'liri' (default) | 'hydra'
+  rt_ref: '/output/rt_ref.csv' # Optional external RT anchor file
+
+PARAM:
+  rt_deviation_cutoff: 0.10    # final generic-formula check; fraction or seconds
 </code></pre>
-<p>Exactly one engine ever runs. The value is case-insensitive, and <code>True</code> is accepted as a synonym for <code>'legacy'</code>. An unrecognised string fails configuration validation loudly rather than silently disabling the check.</p>
-<h2>Why it works</h2>
+<p>Exactly one engine runs. The value is case-insensitive, and an unrecognised string fails configuration validation rather than silently disabling the check. Every engine works without any external reference — <code>rt_ref</code> is optional, purely to sharpen the fit. <code>WORKFLOW.is_peaks</code> is a separate setting that supplies internal-standard peaks; it is not an RT-check parameter.</p>
+<h2>Pipeline order</h2>
+<p>After MS1/MS2 matching, cleanup, and optional internal-standard matching, the selected RT engine runs, followed in every case by the generic formula check:</p>
+<table>
+<thead>
+<tr>
+<th><code>WORKFLOW.rt_check</code></th>
+<th>Engine</th>
+<th>Main model and decision layer</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>liri</code></td>
+<td>LiRI</td>
+<td>Per-class/ether monotone retention-index model with tier and z-score decisions</td>
+</tr>
+<tr>
+<td><code>hydra</code></td>
+<td>HYDRA</td>
+<td>Cross-class hydrophobic retention model with absolute and relative z-score decisions</td>
+</tr>
+<tr>
+<td><code>False</code></td>
+<td>None</td>
+<td>No RT filtering</td>
+</tr>
+</tbody>
+</table>
+<p>The engine-specific settings stay independent: <code>rt_liri_*</code> controls LiRI training, alignment, uncertainty, and z-score decisions; <code>rt_hydra_*</code> controls HYDRA anchors, calibration, uncertainty, competition, and z-score decisions. Progress output contains one <code>RT checking...</code> header and a timed summary for the selected engine.</p>
+<h2>Principle</h2>
 <p>Lipids are modular: a headgroup plus one or more acyl, alkyl, or sphingoid chains. In reversed-phase LC, retention is dominated by hydrophobic surface area, which follows that same modular structure fairly predictably. More carbons elute later, more double bonds or oxygens elute earlier, and a given headgroup shifts its whole homologous series by roughly a constant amount.</p>
-<p>That regularity is what makes the check possible. A wrong MS1 or MS2 annotation is often also a retention-time outlier. All three engines exploit this the same way at a high level: fit an expected-RT model from confident annotations <strong>in this run</strong>, optionally sharpened by an external anchor file, then flag candidates whose observed RT deviates from that expectation by more than a calibrated number of standard deviations. They differ substantially in how that model is built and how conservative the resulting judgement is.</p>
+<p>That regularity is what makes the check possible. A wrong MS1 or MS2 annotation is often also a retention-time outlier. The selected engine fits an expected-RT model from confident annotations <strong>in this run</strong>, optionally sharpened by an external anchor file, and applies its own decision layer. Afterward, the generic formula model supplies the exported <code>rt_deviation</code> and optional final cutoff.</p>
 <p>Every engine works without any external reference file, purely from this run's own confident annotations.</p>
 <h2>Reference data</h2>
 <p>To reduce spurious identifications, we recommend building a retention-time library for each gradient, from standards or manually validated IDs. Point at it with:</p>
-<pre><code class="language-yaml">PARAM:
+<pre><code class="language-yaml">WORKFLOW:
   rt_ref: '/output/rt_ref_2min.csv'
 </code></pre>
 <p>The CSV must have these columns:</p>
@@ -118,12 +151,13 @@ SM,42,0,O2,96.54
 SM,32,0,O2,61.5
 </code></pre>
 <p>External anchors are never trusted on their own time axis. They are first aligned onto this run's RT axis through a robust monotone warp, which is outlier-trimmed and leave-one-out validated. If too few pairs match, or the leave-one-out error is too high, the alignment is refused outright and the engine falls back to running anchor-free. A reference file from a different gradient will therefore not silently corrupt the fit.</p>
-<h2>The engines</h2>
-<h3><code>LiRI</code>, the default</h3>
-<p>LiRI does not regress retention time directly. It builds a <strong>retention index</strong>, a structural score in carbon-equivalent units:</p>
-<pre><code>h = C - a_db * DB - a_o * O
+<h2>The two engines</h2>
+<h3><code>LiRI</code> — Lipid Retention Index (default)</h3>
+<p>LiRI builds a <strong>retention index</strong> — a structural score in carbon-equivalent units:</p>
+<pre><code>h = C - a_db × DB - a_o × O
 </code></pre>
-<p>then fits a <strong>monotone map from <code>h</code> to RT</strong> independently for each <code>(class, ether)</code> group, using only that group's own anchors. The <code>a_db</code> and <code>a_o</code> coefficients are fitted once globally across all anchors, since borrowing statistical power for that single ratio is safe. The retention curve itself is never shared between classes.</p>
+<p>It then fits a <strong>monotone map from <code>h</code> to RT</strong> independently for each <code>(class, ether)</code> pair, using only that pair's own anchors. The coefficients <code>a_db</code> and <code>a_o</code> are fitted once globally (borrowing statistical power is safe for a single ratio), but the retention curve itself is never shared between classes—this is deliberate, not an oversight.</p>
+<p><strong>Why no cross-class curve?</strong> Earlier versions tried this. It failed: classes like triacylglycerols with genuinely different retention slopes got pulled into a curve shaped by steeper classes and mispredicted by tens of seconds. Better to be silent than wrong.</p>
 <p>Each candidate is graded into a tier that determines how forcefully it can be rejected:</p>
 <table>
 <thead>
@@ -156,32 +190,115 @@ SM,32,0,O2,61.5
 </tr>
 </tbody>
 </table>
-<p>A hard rejection bypasses score protection. A soft rejection is forgiven for high-confidence, score-protected idlevel 2 annotations.</p>
-<p><strong>The deliberate limitation.</strong> A class with too few anchors of its own gets no prediction at all, rather than a rough guess. This was a design decision, not an oversight. Earlier versions shared a curve across classes, and two later attempts added a cross-class fallback for exactly the classes that lack their own anchors. All were tested on real data and reverted, because each reintroduced the same failure: a class with a genuinely different retention slope gets pulled into a curve shaped by steeper, unrelated classes and mispredicted by tens of seconds. Triacylglycerols are the recurring example, since their per-carbon retention gain flattens out where glycerophospholipids are still climbing steeply.</p>
-<p>The practical consequence is that LiRI cannot flag an implausible idlevel 1 hit in a class it has never confirmed by MS2 in this run or seen in <code>rt_ref</code>. FA and CE are the usual cases. LiRI is <strong>safe</strong>, in that it will not remove something wrongly for lack of evidence, but it is not <strong>complete</strong>, in that classes without evidence pass through unfiltered no matter how implausible their RT is.</p>
-<h3><code>HYDRA</code></h3>
-<p>HYDRA takes the opposite side of the same tradeoff. It keeps one shared monotone calibration curve, but shares information across classes at the <em>feature</em> level rather than the curve level.</p>
-<p>Each candidate's structure is encoded as a feature vector: headgroup fragment composition (atom counts, charge, rings, built from the same fragments used to generate full structures, so PC, LPC, and SM all receive an identical phosphocholine descriptor), a lipid-family indicator, and chain-inventory terms held at fixed chemistry priors. A class with anchors gets its own learned offset on the shared curve. A class <em>without</em> anchors has its offset predicted by regression from other classes' learned offsets onto their shared descriptors, which is an approximate but chemistry-informed guess rather than no prediction at all.</p>
-<p>HYDRA also computes a <strong>pairwise relative z-score</strong> from a constraint graph over nearby anchors, checking whether a candidate's RT is ordered correctly relative to its neighbours and not just against the absolute curve.</p>
-<p><strong>What this buys.</strong> HYDRA can flag an implausible hit in a class with zero anchors of its own, purely from shared chemistry. A real <code>FA 22:1;O2</code> annotation co-eluting at 114.5 s, where fatty acids that size normally elute around 25 s, was correctly caught and removed through this path. LiRI structurally cannot touch that case.</p>
-<p><strong>What it costs.</strong> <code>rt_hydra_z_soft_ms1</code> (default <code>0.75</code>) applies a much stricter threshold specifically to idlevel 1 candidates, roughly four times tighter in z-units than the value used elsewhere. That is tight enough to reject a substantial fraction of correct annotations by chance alone. In practice HYDRA removes about twice what LiRI removes, and where the two disagree, HYDRA's extra removals are disproportionately <em>correct</em> annotations being discarded. Where LiRI and HYDRA agree that a candidate is bad, they are right about 93% of the time. Agreement between the two is a strong signal; HYDRA disagreeing with LiRI is not.</p>
-<p>If you use HYDRA, consider first raising <code>rt_hydra_z_soft_ms1</code> toward <code>rt_hydra_z_soft</code> (3.0), or setting it to <code>0</code> to disable the idlevel 1 special case entirely. That single default is the largest known lever on HYDRA's precision.</p>
-<h3><code>legacy</code></h3>
-<p>Two independent linear regressions, always run together:</p>
+<p>A hard rejection bypasses score protection. A soft rejection is forgiven for high-confidence, score-protected idlevel 2 annotations. A group with fewer than <code>rt_liri_min_group_n</code> anchors gets no prediction at all and is left untouched.</p>
+<p><strong>Tradeoff: safety vs. completeness.</strong> LiRI will never flag an implausible idlevel 1 hit in a class without local evidence (FA, CE, or any class unconfirmed by MS2 in this run). That is by design. LiRI is <strong>safe</strong>—it will not remove something wrongly for lack of evidence—but <strong>incomplete</strong>—classes without evidence pass through unfiltered no matter how far their RT deviates. This is the right default for conservative filtering. If you need to catch implausible hits in every class, see HYDRA below.</p>
+<h3><code>HYDRA</code> — HYDrophobic Retention Axis</h3>
+<p>HYDRA takes the opposite side of the LiRI tradeoff: it keeps ONE shared monotone calibration curve, but shares information across classes at the <em>feature</em> level, not at the curve level.</p>
+<p>Each candidate is encoded as a feature vector: headgroup SMILES-fragment composition (the same fragments used to generate full structures, so PC, LPC, and SM all get an identical phosphocholine descriptor), lipid-family indicators, and chain inventory (carbon count, double bonds, oxygen, ether, lyso flags). Anchored classes learn their own offset on the shared curve. Unanchored classes get their offset predicted by ridge regression—a chemistry-informed guess rather than no prediction.</p>
+<p>HYDRA also computes a <strong>pairwise relative z-score</strong> (<code>z_rel</code>) from a constraint graph over nearby anchors: it checks whether a candidate's RT is ordered correctly relative to its neighbours, not just against the absolute curve. Tier-C candidates with class support blend 70% absolute and 30% relative z.</p>
+<p><strong>What this buys:</strong> HYDRA can flag an implausible hit in a class with zero anchors—purely from chemistry. A real <code>FA 22:1;O2</code> annotation at 114.5 s (where fatty acids of that size elute around 25 s) was caught and removed through this path. LiRI cannot do this.</p>
+<p><strong>What it costs:</strong> stricter idlevel-1 threshold (<code>rt_hydra_z_soft_ms1</code>, default 0.75) can substantially increase removals. Raise it toward <code>rt_hydra_z_soft</code> or set to <code>0</code> to disable the special idlevel-1 setting if that behavior is too aggressive.</p>
+<h2>The final generic formula check</h2>
+<p>After the selected RT engine has run, a final <strong>generic</strong> check is applied to remove matches that are obviously wrong. Its purpose is to catch the sporadic <code>idlevel 1</code> hits that a conservative engine such as LiRI leaves behind. The advantage of running it last is that it can be trained on high-quality anchors that the engine has already verified.</p>
+<p>The model is deliberately simple — a single formula-based regression across all classes pooled. It is implemented in <code>src/dashboard.rs::compute_rt_deviation</code> and works in four steps:</p>
+<ol>
+<li>Train on annotations with <code>idlevel ≥ 2</code>, a non-empty molecular formula, and <code>score ≥ 0.7</code>.</li>
+<li>Convert each formula into the features <code>1, C, H, N, O, P, S, degree_of_unsaturation</code>.</li>
+<li>Fit a robust ridge regression (penalty <code>0.5</code>) of observed RT against those features; large residuals are trimmed before the final fit.</li>
+<li>For every surviving annotation with a parseable formula, compute <code>rt_deviation = abs(observed_rt - predicted_rt)</code>. Rows without a usable formula receive <code>0.0</code> and are never removed by this check.</li>
+</ol>
+<p>The cutoff comes from <code>PARAM.rt_deviation_cutoff</code>, resolved in <code>src/rt.rs::resolve_rt_deviation_cutoff</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Value</th>
+<th>Interpretation</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>0 &lt; value ≤ 1</code></td>
+<td>Fraction of the observed RT span, so <code>0.10</code> means 10% of <code>max(rt) - min(rt)</code></td>
+</tr>
+<tr>
+<td><code>value &gt; 1</code></td>
+<td>Absolute seconds</td>
+</tr>
+<tr>
+<td><code>0</code></td>
+<td>Disables this final check</td>
+</tr>
+</tbody>
+</table>
+<p>Rows with <code>rt_deviation &gt; resolved_cutoff</code> are removed after the selected engine. This is the <strong>only stage where <code>rt_deviation_cutoff</code> is used</strong>. Because the model is intentionally crude, the cutoff should be left loose — it is a safety net for gross outliers, not a second opinion on borderline calls.</p>
+<p>When <code>rt_check: False</code>, <code>rt_deviation</code> can still be computed and displayed for inspection, but no rows are removed, because no RT engine was selected.</p>
+<h3>Two different RT errors</h3>
+<p>The output contains two distinct kinds of RT error, and confusing them leads to wrong conclusions:</p>
 <ul>
-<li><strong>Generic</strong>: fits RT against elemental formula features (C, H, N, O, P, S, and degree of unsaturation) by robust ridge regression across all classes pooled, with one global tolerance (<code>rt_generic_cutoff</code>, default 60 s). Needs at least 24 training rows or it does nothing.</li>
-<li><strong>Class-specific</strong>: fits a separate <code>rt ~ C + DB + O</code> regression per class, plus two hardcoded structural rules for triacylglycerols eluting too early and lyso species eluting too late.</li>
+<li>The <strong>engine diagnostics</strong> (<code>rt_liri.csv</code>, <code>rt_hydra.csv</code>) contain the prediction and error used by that engine's own decision layer.</li>
+<li><code>rt_generic.csv</code> is written after the selected engine and contains the final generic formula check for every input row: its predicted RT, error, resolved cutoff, and keep/remove verdict.</li>
 </ul>
-<p>This is a linear-in-RT model, so it assumes a roughly constant seconds-per-carbon slope. That assumption breaks down in the late gradient, and several hand-tuned exceptions in the code compensate for it rather than fixing the model shape.</p>
-<p>Measured removal precision is close to a coin flip. It is superseded by LiRI on every metric measured, and is kept for rollback and direct comparison rather than as a working default.</p>
-<h2>Which to use</h2>
-<p><strong>Default to <code>liri</code>.</strong> It matches HYDRA's removal precision with a smaller, better-understood footprint and a hard safety property: a class it has no evidence for is never touched. The tradeoff you accept is that false annotations survive in classes without rich MS2 spectra.</p>
-<p><strong>Use <code>hydra</code> when idlevel 1 confidence matters most</strong>, for example a study with many classes that rarely get MS2 confirmation, where LiRI's silence on those classes is a bigger practical problem than HYDRA's occasional over-removal elsewhere. Loosen <code>rt_hydra_z_soft_ms1</code> first.</p>
-<p><strong>Use <code>legacy</code> only for rollback or comparison.</strong></p>
-<p><strong>Use <code>False</code></strong> when validating a new sample type or gradient where you do not yet trust any RT-based judgement. Better to see everything MS1 and MS2 produced and filter by hand than to lose candidates silently to a model calibrated on the assumption that this run's chromatography is well behaved.</p>
-<p>Whichever engine you pick, validate any change to its thresholds against replicate reproducibility or an <code>rt_ref</code>-graded audit, not just against a single run's annotation counts.</p>
-<h2>Diagnostics</h2>
-<p>Each engine writes a per-annotation trail to <code>diag/</code>, so you can see exactly why any given candidate was kept or removed.</p>
+<p>The exported <code>rt_deviation</code> value in <code>annotation.csv</code>, <code>annotation_full.csv</code>, and the dashboard comes from the generic model, so it always reflects what the final cutoff actually checked. An engine diagnostic error and <code>rt_deviation</code> may therefore differ — that is correct and expected, and the generic cutoff applies only to the latter.</p>
+
+<h2>Comparison and recommendations</h2>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>LiRI</th>
+<th>HYDRA</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Model shape</td>
+<td>Monotone index to RT, independent per class</td>
+<td>Shared monotone curve with class offsets</td>
+</tr>
+<tr>
+<td>Cross-class sharing</td>
+<td>Deliberately none</td>
+<td>Yes, through chemistry features</td>
+</tr>
+<tr>
+<td>Classes without anchors</td>
+<td>Not checked</td>
+<td>Zero-shot chemistry-informed estimate</td>
+</tr>
+<tr>
+<td>Main failure mode</td>
+<td>Silent pass-through when evidence is thin</td>
+<td>Possible over-removal, especially idlevel 1</td>
+</tr>
+<tr>
+<td>External RT reference</td>
+<td>Optional, aligned and quality-checked</td>
+<td>Optional, aligned and quality-checked</td>
+</tr>
+<tr>
+<td>Removal precision in historical <code>rt_ref</code> audit</td>
+<td>~0.77</td>
+<td>~0.74</td>
+</tr>
+<tr>
+<td>Kept-set false negatives over 10 s in that audit</td>
+<td>3</td>
+<td>3</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Default to <code>liri</code>.</strong> It matches HYDRA's removal precision (~77% vs ~74%) with a smaller, better-understood footprint and a hard safety guarantee: a class with no local evidence is never flagged. The tradeoff is that false annotations survive in classes without MS2 confirmation in this run.</p>
+<p><strong>Use <code>hydra</code> when coverage and idlevel-1 confidence matter more</strong> than conservative filtering—for example, a broad-spectrum study with many classes that rarely get MS2 confirmation, or when you want to catch implausible hits in unconfirmed classes. Review and tune <code>rt_hydra_z_soft_ms1</code> (default 0.75); it is stricter than the generic threshold and can substantially increase removals. The final generic formula check (<code>rt_deviation_cutoff</code>) always applies after HYDRA runs.</p>
+<p><strong>Use <code>False</code> when validating a new sample type or gradient.</strong> When you do not yet trust any RT-based judgement, it is better to see everything MS1 and MS2 produced and filter by hand than to lose candidates silently to a model trained on the assumption that this run's chromatography is well behaved. The generic formula model can still compute and display <code>rt_deviation</code> for inspection even when <code>rt_check: False</code>.</p>
+<p>Whichever engine you choose, validate any threshold change against replicate reproducibility or an <code>rt_ref</code>-graded audit, not just a single run's annotation counts.</p>
+<h2>Diagnostics and troubleshooting</h2>
+<p>Each engine writes a per-annotation diagnostic trail to the <code>diag/</code> output folder when it produces a model, so you can see exactly why any given candidate was kept or removed:</p>
+<ul>
+<li><strong>LiRI:</strong> <code>diag/rt_liri.csv</code> — <code>ether</code>, <code>sum_c</code>, <code>sum_db</code>, <code>sum_o</code>, <code>rt</code>, <code>rt_pred</code>, <code>sigma</code>, <code>z</code>, <code>tier</code>, <code>verdict</code></li>
+<li><strong>HYDRA:</strong> <code>diag/rt_hydra.csv</code> and <code>diag/rt_hydra_anchors.csv</code> — <code>h</code>, <code>rt_pred</code>, <code>sigma_rt</code>, <code>z_abs</code>, <code>z_rel</code>, <code>tier</code>, <code>verdict</code>, and score before/after</li>
+<li><strong>Final generic formula (after any engine):</strong> <code>diag/rt_generic.csv</code> — <code>rt</code>, <code>rt_pred</code>, <code>err</code>, <code>cutoff</code>, <code>protected</code>, <code>severe</code>, <code>verdict</code> for every input annotation</li>
+</ul>
+<p>The dashboard also shows the generic filter as a scatter plot of predicted vs. observed RT for every hit, coloured by identification level. Points whose RT deviates excessively from the generic model are the ones removed by <code>rt_deviation_cutoff</code>, so the plot makes it immediately visible whether the model is behaving and whether the cutoff is set sensibly.</p>
 </article>
     </div>
 </body>
