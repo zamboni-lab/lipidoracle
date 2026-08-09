@@ -8,6 +8,10 @@ retention-time validation, and C=C / oxidation localisation from EAD or UVPD dat
 This repository holds the documentation site and the test data. The engine ships
 as a Docker image.
 
+Using an AI coding agent? See [AGENTS.md](AGENTS.md) — the repository carries a
+LipidOracle skill that teaches agents the full Docker workflow, the parameter
+file, and how to read the outputs.
+
 ## Run
 
 Input is a single `.mgf` carrying both MS1 and MS2 scans, stored in a local folder `<INPUT-FOLDER>`. 

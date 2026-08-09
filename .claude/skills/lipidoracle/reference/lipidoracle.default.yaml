@@ -1,0 +1,261 @@
+## LipidOracle parameters
+## ---------------------------------------------------------------------------
+## This file controls the full annotation pipeline:
+##   - which engines run (MS1, MS2, EAD, RT checks),
+##   - how tolerant matching is,
+##   - how strict filtering is,
+##   - and which external libraries are merged in.
+##
+## Practical tuning strategy:
+##   1) Start with defaults.
+##   2) If you miss true positives, relax thresholds gradually.
+##   3) If you get too many false positives, tighten score/RT filters.
+##   4) Change one group at a time and compare output deltas.
+## ---------------------------------------------------------------------------
+VERSION: x.y.z
+
+WORKFLOW:
+  ## Targeted analysis (by m/z)
+  # Optional CSV with precursor target m/z values (one m/z per line/column).
+  # This is useful for focused validation runs and troubleshooting.
+  # Leave empty ('') to process all spectra in the MGF.
+  mz_target: ''
+
+  ## Engines
+  # produce idlevel=1 and idlevel=2 candidates
+  lipidoracle: True
+  # the LipiDex and LipidBlast libraries are provided for testing and comparison.
+  # many functionalities are not supported with these engines.
+  lipidex: False
+  lipidblast: False
+
+  ## Extra reference libraries
+  # Optional list of extra CSV/CSV.GZ libraries merged into library search.
+  # Paths can be absolute container paths (/data/...) or local relative paths.
+  library_extra: [ ] # e.g. '/data/ST501.csv'
+
+  ## Optional acyl-chain C=C (+ oxygen site) assignment
+  #   False   -> analysis is skipped.
+  #   ead1    -> legacy heuristic chain-ladder engine, without oxygen support
+  #   ead2    -> PUFAs with oxidation
+  acyl_analysis: False
+
+  ## Retention-time filtering
+  # Selects at most one RT-checking engine:
+  #   False    -> no RT checking.
+  #   liri     -> the default. A monotone
+  #               structural-index -> RT map fit independently per lipid
+  #               class from the run's own homologous series (plus rt_ref,
+  #               aligned onto this run's own RT axis first). Fails to filter
+  #               classes for which there are no MS2 spectra to confirm, i.e.
+  #               idlevel 1 hits like FA and CE
+  #   hydra    -> a cross-class
+  #               hydrophobicity model sharing information via headgroup
+  #               SMILES fragments, with an absolute + pairwise relative
+  #               z-score decision layer. Remove also idlevel 1 hits, but is very conservative
+  #   legacy   -> the original two filters (generic formula-based regression
+  #               + per-class regression), always run together. Superseded
+  #               by LiRI on every metric in docs/RT_COMPARISON.MD (the
+  #               class filter alone is close to a coin flip); kept for
+  #               comparison/rollback.
+  rt_check: liri
+
+  rt_ref: '/output/rt_ref_2min.csv'
+
+  # Path to an internal-standards CSV file.
+  # Required columns: name, mass, c, db, mod, hg.
+  # Leave empty ('') to skip IS matching.
+  is_peaks: ''
+  
+PARAM:
+  ## Performance + matching behavior
+  # Number of CPU cores used for MS2 scoring.
+  ncores: 6
+  
+  ## Library generation  
+  # Max allowed rarity index. Lower value = stricter, more conservative IDs.
+  # 0 usually means only most common species.
+  rarity_max: 3
+  # Penalty subtracted from score per rarity unit.
+  rarity_penalty: 0.15  
+  # Max extra side-chain oxygen considered in MS2 isomer generation.
+  ms2_maxO: 2
+  # Max extra side-chain oxygen considered in MS1 library generation.
+  ms1_maxO: 2
+  # Remove deuterated compounds from libraries.
+  # This is useful with LipidBlast and LipiDex libraries.
+  # Deuterated internal standards should be provided as csv in is_peaks (under WORKFLOW):
+  remove_d: True
+
+  ## Adducts
+  # Adduct list considered during library generation and matching.
+  adducts: [ '[M+H]+','[M+NH4]+','[M+Na]+','[M+H-H2O]+','[M-H2O+H]+','[M-H]-','[M+Ac-H]-','[M+FA-H]-','[M-2H]2-','[M+HCOO]-' ]
+  # Relative prior likelihood per adduct (same order as above).
+  # Lower values downweight less plausible adduct channels.
+  adduct_likelihood: [ 1, 0.5, 0.3, 0.3, 0.3, 1, 0.5, 0.5, 0.5, 1 ]
+
+  ## MS2 peak cleanup before scoring
+  # Absolute intensity floor. Peaks below this are discarded.
+  ms2_noise_abs: 10
+  # Percentile-based intensity floor (0..1). The final threshold is:
+  # max(ms2_noise_abs, percentile(ms2_noise_prc)).
+  ms2_noise_prc: 0.3
+  # Ignore peaks too close to precursor:
+  # keep only peaks with mz < precursor_mz - ms2_mztrim.
+  # Higher values reduce neutral-loss clutter but can remove informative peaks.
+  ms2_mztrim: 5
+
+  ## MS matching
+  # Precursor m/z tolerance for candidate lookup (Da).
+  ms1_tolerance: 0.01
+  # Fragment m/z tolerance for MS2 peak matching (Da).
+  ms2_tolerance: 0.02
+  # Score penalty applied per absolute ppm of MS1 mass error.
+  ms1_ppm_penalty: 0.03
+
+  # Primary MS2 score model used by Rust implementation.
+  # Currently expected value: 'hybrid'
+  ms2_score: 'hybrid'
+  # Companion MS2 similarity metric reported as score_L2_modcos.
+  ms2_score2: 'greedy-cosine'
+  
+  ## L1/L2 Score thresholds
+  # Minimum absolute MS2 score to keep a candidate.
+  ms2_lo_score_cutoff: 0.2
+  # Relative MS2 cutoff vs best score in same scan.
+  # Example: 0.9 keeps candidates within 90% of scan top score.
+  ms2_score_top_cutoff: 0.9
+  # Minimum absolute MS1 score to keep a candidate.
+  ms1_lo_score_cutoff: 0.2
+  # Relative MS1 cutoff vs best score in same precursor/spectrum context.
+  ms1_score_top_cutoff: 0.5
+
+  # If only headgroup evidence is observed for multi-chain lipids, collapse chain-
+  # unresolved names to species-level labels to avoid over-specific false detail.
+  ms2_compress_undefined_chains_to_species: True
+  # If True, MS1 stage avoids re-annotating entries already covered by stronger IDs.
+  ms1_matching_ignore_already_matched: True
+  
+  ## Debugging and diagnostics
+  # Enable verbose diagnostic logging.
+  debug: False
+  # Deduplication/consistency filtering on MS2 IDs. Disable for debugging.
+  ms2id_cleanup: True
+  # Deduplication/consistency filtering on MS1 IDs. Disable for debugging.
+  ms1_filter: True
+
+  ## Acyl-Analysis (EAD, UVPD) 
+  # If True, also run C=C analysis for idlevel 1 single-acyl unsaturated lipids
+  # such as LPC/LPE after MS1, IS, cleanup, and RT filtering.
+  include_ms1_monochain: True
+  # Maximum unsaturation complexity accepted for exhaustive EAD positional search.
+  ead_max_unsaturated: 6
+  # Maximum total hydroxyl/oxygen positions accepted for exhaustive EAD v2/v3 search.
+  ead_max_oxygen: 2
+  # Hard cap on EAD candidate enumeration per feature (prevents combinatorial blow-up).
+  # A single oxidized chain token (e.g. 20:4;O) enumerates ~22k (db, oh/ket
+  # position) candidates. Set it to 5000 or 10000 for non-oxidated chains, 30000 for oxidized chains.
+  ead_max_candidates: 10000
+  # Max number of EAD candidate to store
+  ead_max_output: 20
+  # Weight of chain correlation term in EAD final score.
+  ead_chain_corr_weight: 0.05
+  # Intensity transform for EAD v2 and v4 stage 1: none, sqrt/light, log10, ln, or log2.
+  ead_intensity_scaling: 'none'
+  # For EAD v4, sweep several noise floors and retain the most discriminating result.
+  ead_noise_sweep: False
+  # Relative EAD score cutoff vs top EAD candidate.
+  ead_chain_cutoff: 0.99
+  # Absolute minimum EAD score to keep a DB-position assignment.
+  ead_min_score: 0.2
+
+  ## RT general
+  # Relative to the observed RT-axis length when <= 1; absolute seconds when > 1.
+  rt_deviation_cutoff: 0.10
+
+  ## RT legacy
+  rt_legacy_generic_cutoff: 60
+  rt_legacy_isigma_cutoff: 0.25
+  rt_legacy_minlevel: 2
+  # Training gate: only IDs with score >= this value contribute to RT model fit.
+  rt_legacy_min_score_training: 0.7
+  # Protection gate: IDs with score >= this value can be preserved despite RT deviation.
+  rt_legacy_min_score_protection: 0.7
+  # Legacy fallback key (used only when split training/protection keys are absent).
+  rt_legacy_min_score: 0.7
+
+  ## Legacy class-specific RT model
+  # RT split point between lyso and non-lyso classes (seconds).
+  rt_legacy_lyso_max: 50
+  # Minimum plausible TG RT (seconds).
+  rt_legacy_tg_min: 90
+  # Duplicate pruning window: for same identity, clusters farther apart than this
+  # RT delta are treated as divergent and weaker cluster may be removed.
+  rt_legacy_duplicate_max_delta: 4
+
+  ## LiRI (Lipid Retention Index) model
+  # Minimum idlevel that may seed the LiRI model (in-run anchors).
+  rt_liri_train_minlevel: 2
+  # Minimum idlevel checked against the LiRI model (lower than training on
+  # purpose: idlevel-1 calls benefit most from RT screening).
+  rt_liri_check_minlevel: 1
+  # Training gate: only idlevel>=2 anchors with score >= this value seed the model.
+  rt_liri_min_score: 0.7
+  # Protection gate: idlevel>=2 IDs with score >= this value survive a "soft"
+  # LiRI-specific soft deviation protection. The final generic formula cutoff
+  # is applied after the selected RT engine and is not score-protected.
+  rt_liri_min_score_protection: 0.7
+  # Minimum matched (external anchor, in-run anchor) pairs required before an
+  # external rt_ref alignment is trusted at all.
+  rt_liri_align_min_inliers: 15
+  # Maximum acceptable leave-one-out alignment error (seconds) for rt_ref.
+  # Above this the file is judged incompatible and LiRI falls back to anchor-free.
+  rt_liri_align_max_loo: 5.0
+  # Soft rejection threshold, in standard deviations of the candidate's own
+  # calibrated prediction uncertainty.
+  rt_liri_z_soft: 3.0
+  # Hard rejection threshold (applies even to score-protected idlevel>=2 IDs).
+  rt_liri_z_hard: 5.0
+  # RT reproducibility floor (seconds): minimum prediction sigma.
+  rt_liri_jitter_floor: 0.5
+  # Minimum anchors in a (class, ether) group before it gets its own local
+  # monotone warp and uncertainty estimate.
+  rt_liri_min_group_n: 5
+  rt_liri_duplicate_max_delta: 4.0
+
+  ## HYDRA (HYDrophobic Retention Axis) model
+  # Training gate: only idlevel>=2 anchors with score >= this value seed the model.
+  rt_hydra_anchor_min_score: 0.7
+  # Minimum idlevel checked (lower than training on purpose: level-1 calls
+  # benefit most from RT screening).
+  rt_hydra_check_minlevel: 1
+  # Soft rejection threshold (standard deviations of the candidate's own
+  # calibrated prediction uncertainty). Unprotected IDs above this are removed
+  # (or down-weighted when rt_hydra_llr_weight > 0).
+  rt_hydra_z_soft: 3.0
+  rt_hydra_z_soft_ms1: 0.75
+  # Hard rejection threshold (tiers A/B only, no MS2 chain evidence).
+  rt_hydra_z_hard: 5.0
+  # Within-precursor competition: drop a tier A/B candidate whose |z| exceeds
+  # this while another candidate for the same precursor sits at |z| < 2.
+  rt_hydra_z_compete: 4.0
+  # Maximum |delta H| (CH2-equivalents) for anchor-neighborhood edges in the
+  # pairwise constraint graph.
+  rt_hydra_r_max: 8.0
+  # Score contribution weight for RT evidence. 0 = filter-only behaviour.
+  # >0 turns soft deviations into score penalties instead of deletions.
+  rt_hydra_llr_weight: 0.0
+  # Minimum total anchors (in-run + aligned external) before HYDRA activates.
+  rt_hydra_min_anchors: 24
+  # Ridge for the ladder's zero-shot fragment backstop (headgroup fragments
+  # -> per-class offset). 3.0 reproduces the validated engine; smaller lets
+  # zero-shot classes drift further from the chemistry prior.
+  rt_hydra_lambda: 3.0
+  rt_hydra_jitter_floor: 0.5
+  rt_hydra_duplicate_max_delta: 4.0
+  
+  ## LipidBlast class exclusion
+  # Headgroup classes to discard when lipidblast=True. These classes produce frequent
+  # false positives in the LipidBlast library and should be skipped in routine runs.
+  lipidblast_skip: [ 'NAGlySer', 'NAGly', 'LDGCC', 'DGCC', 'NAOrn', 'AHexCer', 'VAE', 'ADGGA' ]
+
