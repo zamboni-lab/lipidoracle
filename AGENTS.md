@@ -22,8 +22,14 @@ Supporting references, both linked from the skill:
 
 ## The one-paragraph version
 
-Put a single `.mgf` (MS1 and MS2 scans together) in a folder, pick an output
-folder, and run:
+LipidOracle starts from an `.mgf`; it does not read vendor formats or mzML and
+does not do peak picking. Produce the MGF upstream with
+[MASSter](https://github.com/zamboni-lab/masster-dist)
+(`sample.find_features()` → `sample.find_ms2()` → `sample.export_mgf(...)`, and
+`study.import_oracle(...)` to pull the results back) or with MZmine. Both MS1
+and MS2 scans go in one file, tagged with `MSLEVEL`.
+
+Then put that single `.mgf` in a folder, pick an output folder, and run:
 
 ```bash
 docker run --rm -v /abs/in:/input -v /abs/out:/output zambonilab/lipidoracle
@@ -38,6 +44,9 @@ same command again to get `annotation.csv`, `summary.csv`, `dashboard.html`, and
 
 - Relative `-v` paths create empty Docker volumes. Always mount absolute paths.
 - More than one `.mgf` in the input folder makes auto-detection ambiguous.
+- An MGF without `MSLEVEL` lines is read as MS2-only — the MS1 stage then finds
+  nothing. `RTINSECONDS` must be seconds, and `FEATURE_ID` is what links results
+  back to the upstream feature table.
 - Editing a config that is not inside the mounted output folder has no effect.
 - A run that only prints "Created default parameters" succeeded; re-run it.
 

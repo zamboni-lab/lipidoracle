@@ -19,6 +19,82 @@ LipidOracle takes **one input folder** containing a single `.mgf` file (MS1 and
 MS2 scans together) and **one output folder**. It is a batch tool: one command,
 no interactive prompts, no network calls.
 
+### 0. Getting the MGF
+
+LipidOracle does not read vendor formats or mzML, and does not do peak picking.
+Feature detection and MGF export happen upstream, in **MASSter** or **MZmine**.
+
+**MASSter** (Zamboni lab, same authors — the smoothest path, and it can import
+the results back):
+
+```python
+import masster
+
+sample = masster.Sample("data.mzML")   # or a vendor file, on Windows
+sample.find_features()
+sample.find_ms2()
+sample.export_mgf("data.mgf")
+```
+
+Install with
+`uv pip install --index https://zamboni-lab.github.io/masster-dist/simple masster`.
+For a multi-sample experiment, run the `Study` workflow (`align()` → `merge()`)
+and export the consensus spectra with `study.export_mgf("consensus.mgf")`.
+
+Useful `export_mgf()` arguments: `selection="best"` for one representative
+spectrum per feature, `selection="all", merge=True` to build consensus spectra,
+plus `clean`, `deisotope`, `inty_min`, and `precursor_trim` to control which
+peaks survive. Those choices materially change annotation performance — export
+settings are part of the LipidOracle tuning surface, not a preprocessing detail.
+
+MASSter's agent guide:
+<https://github.com/zamboni-lab/masster-dist/blob/main/docs/agent/masster-agent-guide.md>
+
+**MZmine** also works: process to a feature list and export MS1 and MS2 to a
+single MGF.
+
+### The MGF dialect LipidOracle expects
+
+Both MS1 and MS2 scans go in **one file**, distinguished by `MSLEVEL`:
+
+```
+BEGIN IONS
+TITLE=fid:76, rt:24.24, mz:103.6902
+FEATURE_ID=76
+CHARGE=0
+PEPMASS=103.69015060912331
+RTINSECONDS=24.237
+MSLEVEL=1
+100.07555 7479
+...
+END IONS
+```
+
+- `FEATURE_ID` groups the MS1 and MS2 scans of one precursor; it becomes the
+  `mgf_feat` column in the output and is what lets you join results back to the
+  upstream feature table. Without it, that link is lost.
+- `MSLEVEL` — **absent means 2**. An MGF with no `MSLEVEL` lines is read as
+  MS2-only, and the MS1 annotation stage silently finds nothing.
+- `RTINSECONDS` — seconds, not minutes. MASSter's own tables use minutes, so
+  don't hand-convert; let `export_mgf()` do it.
+- `CHARGE` drives polarity inference. Override with `--polarity` if it's absent
+  or unreliable.
+- MS2 blocks with no peaks are skipped.
+
+The two datasets in `testdata/` are MASSter exports and are the reference for
+what a well-formed input looks like.
+
+### Getting results back into MASSter
+
+The round trip is supported — after a LipidOracle run:
+
+```python
+study.import_oracle("path/to/oracle_output")
+```
+
+Then `study.get_id()`, `study.id_select(score=(0.8, 1.0))`, and
+`study.id_filter(...)` work on the annotations alongside MASSter's own.
+
 ### 1. Pull the image
 
 ```bash
@@ -164,6 +240,9 @@ The repository ships two ready-to-run datasets under `testdata/`:
 | --- | --- |
 | Runs and exits immediately, only writes `lipidoracle.yaml` | Expected first-run behaviour. Re-run the same command. |
 | "Cannot find input MGF" | No `.mgf` under `/input`, or the volume mount used a relative path. |
+| `summary.csv` reports 0 MS1 features | The MGF has no `MSLEVEL=1` blocks, or no `MSLEVEL` at all (defaults to 2). Re-export from MASSter/MZmine including MS1. |
+| All RT values look ~60x too small | The MGF used minutes in `RTINSECONDS`. Re-export rather than patching the file. |
+| Results can't be joined to the upstream feature table | The MGF was exported without `FEATURE_ID`, so `mgf_feat` is empty. |
 | Config changes have no effect | Edited a file outside the mounted output folder, or a stray `*.yaml` in the output folder is being picked up first. |
 | `WORKFLOW.acyl_analysis: unrecognized value` | Use `False`, `ead1`/`v1`, or `ead2`/`v2`. |
 | No idlevel 3 rows | `acyl_analysis` is `False`, or the data is CID and carries no EAD/UVPD fragments. |
@@ -172,7 +251,7 @@ The repository ships two ready-to-run datasets under `testdata/`:
 
 ## Reference
 
-Full documentation: <https://zamboni-lab.github.io/lipidoracle/>
+Paper on the EAD annotation: <https://zamboni-lab.github.io/lipidoracle/>
 Method: Wu et al., *Analyst*, 2025, [10.1039/d5an00567a](https://doi.org/10.1039/d5an00567a)
 
 Licensed PolyForm Noncommercial 1.0.0 — non-commercial use only, including
