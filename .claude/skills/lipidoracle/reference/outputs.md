@@ -15,6 +15,9 @@ Everything below lands in the folder mounted at `/output`.
     ├── annotation_full.csv
     ├── annotation_idlevel1.csv
     ├── annotation_idlevel2.csv
+    ├── annotation_idlevel3.csv     # only when acyl_analysis is on
+    ├── annotation_idlevel4.csv     # only when acyl_analysis is on
+    ├── l3_resolvability.csv        # only when acyl_analysis is on
     ├── summary_by_feature.csv
     ├── input_spectra.csv
     ├── lib_idlevel1.csv
@@ -42,10 +45,10 @@ several rows when candidates tie.
 | `idlevel` | Evidence level 1–4 (see below) |
 | `formula` | Neutral molecular formula |
 | `ion` | Adduct, e.g. `[M+H]+` |
-| `name` | Most specific name the evidence supports |
+| `name` | Most specific name the evidence supports — a strict Shorthand2020 name, plus a bracketed confidence tail at idlevel 4 |
 | `species` | Species-level (shorthand) name |
 | `class` | Lipid class, e.g. `PC`, `TG`, `FA` |
-| `mod_str` | Modifications, e.g. `;O`, `;OH(5)` |
+| `mod_str` | Modifications, e.g. `;O`, `;5OH` |
 | `rarity` | Rarity index of the library entry; higher = less common, penalised in scoring |
 | `score_L2` | MS2 match score (idlevel 2+) |
 | `score_L3` | Positional localisation score (idlevel 3/4) |
@@ -69,16 +72,72 @@ and carry the most false positives — the RT engines exist mainly to prune them
 
 ### Reading names
 
+Names are **Shorthand2020** (Liebisch et al. 2020). Since v1.0.173 that is
+enforced throughout, and legacy spellings in input libraries are normalised on
+load.
+
 `/` between chains = sn-positions known. `_` = composition known, positions not.
 No separator (`PC 34:1`) = species-level shorthand only.
 
-Modifications follow a semicolon: `;OH(3,5)` hydroxyls, `;oxo(5)` ketone,
-`;COOH(8)` extra carboxyl, `;ep(5)` epoxide, `;cyc(3)` cyclopropane. Double-bond
-geometry when known: `18:1(9Z)`, `18:1(9E)`.
+Modifications follow a semicolon with **the position in front of the
+abbreviation**: `;3OH,5OH` hydroxyls, `;5oxo` ketone, `;8COOH` extra carboxyl,
+`;5Ep` epoxide, `;[11-13cy3:0]` cyclopropane. Double-bond geometry when known:
+`18:1(9Z)`, `18:1(9E)`.
 
-CXSMILES ambiguity blocks after the `|` delimiter: `f:` fragment grouping for
-unknown sn-assignment, `m:` movable attachment point, `Sg:` variable-length
-chain segment, `ctu:` unspecified double-bond geometry.
+Older LipidOracle wrote `;OH(3,5)`, `;oxo(5)`, `;ep(5)`, `;cyc(3)`. Those are
+still *accepted* as input but are no longer *emitted* — if you are diffing
+against pre-1.0.173 output, expect this change in every modified name.
+
+#### The idlevel-4 confidence tail
+
+At idlevel 4 the `name` carries a bracketed tail giving the support behind each
+localised position:
+
+```
+FA 20:4;OH [DB sn1: Δ5 100%, Δ8 100%, Δ12 100%, Δ14 50%, Δ15 50%; OH sn1: 11 100%]
+```
+
+Aspects (`DB`, `OH`, `oxo`) and chains are separated by `;`, positions within an
+aspect by `,`. **Strip the tail before parsing the name** — everything from
+` [` to the closing `]` is the extension, and the part before it is the strict
+Shorthand2020 core.
+
+Note that a group's position can appear in the tail while the name body leaves
+it unpositioned (`FA 20:4;OH`, not `FA 20:4;11OH`). That is deliberate: a group
+positioned mid-chain alongside unlocalised double bonds does not say how those
+bonds divide around it, so the body would be unrepresentable.
+
+What the percentage means depends on `PARAM.l3_selection`: under `posterior`
+(the default) it is that position's marginal probability; under `legacy` it is
+the fraction of retained candidates supporting it — candidate support, not a
+calibrated probability.
+
+#### CXSMILES
+
+The `smiles` column is extended CXSMILES, validated against CDK. Blocks inside
+the `|...|` delimiter: `Sg:` variable-length chain segment (unlocalised double
+bond), `m:` position-variation bond (unlocalised modification), `$snN$` atom
+labels (unresolved sn-assignment). LipidOracle extensions live *after* the
+closing `|`, in the title field: `constrain(a+b=15)` gives the `Sg:` run
+lengths, `swappable(sn1,sn2)` permits the labelled positions to permute, and
+`dbPos(...)` / `mPos(...)` carry the idlevel-4 percentages.
+
+**A fully determined structure has no `|...|` tail at all** — the presence of a
+tail is itself the signal that something was left open.
+
+Two traps if you consume this column:
+
+- **A renderer that ignores `Sg:` fails silently**, drawing a chain many carbons
+  short with no warning. Expand before depicting.
+- **The trailer does not survive a round trip** through a toolkit: the `|...|`
+  block gets renumbered correctly, but `constrain(...)`, `swappable(...)`,
+  `dbPos(...)` and `mPos(...)` live in the title field and are dropped. Preserve
+  it yourself if something rewrites these strings.
+
+Removed in v1.0.173, so do not expect them and do not write parsers for them:
+`ctu:` (a ChemAxon query feature that added no information — undetermined
+geometry is now just a bare `C=C`), and the `f:` / `RG:` encodings of unresolved
+sn-assignment, replaced by `$snN$` labels on a complete molecule.
 
 ## summary.csv
 
@@ -103,6 +162,9 @@ stay blank while the CSVs remain fully valid.
 | --- | --- |
 | `annotation_full.csv` | Every column the engine tracks: `ppm`, `dmz`, per-metric scores (`score_L2_metric`, `score_L2_modcos`), matched and missed fragment lists, `ms2_top10`, `rank`, `compressed`. Use this to explain *why* a call scored the way it did. |
 | `annotation_idlevel1.csv`, `annotation_idlevel2.csv` | Per-stage snapshots before later filtering |
+| `annotation_idlevel3.csv` | Retained positional candidates, up to `l3_max_output` per feature. Broader than what reaches `annotation.csv`. |
+| `annotation_idlevel4.csv` | The per-feature positional consensus |
+| `l3_resolvability.csv` | Why a position was or was not called: `n_candidates`, `top_prob` (posterior mass on the winner), `cred95` (size of the 95% credible set), `db_marginals` (per-position marginals, strongest first), `margin` and `matched_n` (what the idlevel-4 gates read), and `null_rel` when `l3_null_decoys` is on. One row per scored feature. **Reports only — it gates nothing.** |
 | `summary_by_feature.csv` | One row per MS1 feature, aggregating its spectra, peaks, entropy, and all competing IDs |
 | `input_spectra.csv` | Parsed spectra as the engine saw them — first stop when the MGF may be malformed |
 | `lib_idlevel1.csv` | Generated MS1 library: masses, adducts, chains, rarity |
@@ -114,3 +176,24 @@ To trace why an expected lipid is missing, walk backwards: `lib_idlevel1.csv`
 (was it in the library?) → `annotation_idlevel1.csv` (did the mass match?) →
 `annotation_idlevel2.csv` (did MS2 score above cutoff?) → `rt_*.csv` (did the RT
 filter reject it?).
+
+To trace why a **position** was not called, the walk is different — the
+annotation is there, it just names the chain at species level. Check
+`annotation_idlevel3.csv` first (were candidates enumerated at all? if the file
+is empty, `acyl_analysis` is off or the data is not EAD/UVPD), then
+`l3_resolvability.csv`:
+
+- `n_candidates` at or near `l3_max_candidates` means the search was truncated
+  by stride-sampling. A single oxidised token like `20:4;O` enumerates ~22,300
+  candidates; below that cap the true structure can be sampled out *before
+  scoring runs*, and the output looks identical to a scoring failure. Raise
+  `l3_max_candidates` to 30000 for oxidised work.
+- `top_prob` below `l3_post_min_mass` (default 0.5) is the ordinary case: the
+  spectrum genuinely did not determine the position, and the credible set in
+  `cred95` says how uncertain it was. This is the intended behaviour of
+  `l3_selection: posterior`, not a defect.
+- `margin` below `l3_min_margin` or `matched_n` below `l3_min_matched` means
+  `ead1`'s gates abstained.
+- Setting `l3_selection: legacy` will name more positions, at a measurably lower
+  hit rate. Use it for comparison against pre-1.0.173 output, not to get more
+  calls.

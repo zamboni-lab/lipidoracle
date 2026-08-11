@@ -176,14 +176,16 @@ in the file has a sensible default.
 ```yaml
 WORKFLOW:
   lipidoracle: True      # internal MS1/MS2 engine — keep on
-  acyl_analysis: False   # False | ead1 | ead2 — C=C / oxidation localisation
+  acyl_analysis: False   # False | ead1 | ead2 | uvpd — C=C / oxidation localisation
   rt_check: liri         # False | liri | hydra | legacy
   library_extra: [ ]     # optional extra CSV libraries
 ```
 
 **`acyl_analysis`** — leave `False` for CID data; it needs EAD or UVPD spectra.
-Set `ead1` for the chain-ladder engine (double bonds, no oxygen support) or
-`ead2` for PUFAs with oxidation. Accepts `v1`/`v2` as aliases.
+Set `ead1` for the chain-ladder engine (double bonds, no oxygen support at all —
+`;O` species are dropped), `ead2` for anything oxidised, or `uvpd` for 193/213 nm
+photodissociation data. Accepts `v1`/`v2` as aliases. With `ead2`, also raise
+`PARAM.l3_max_candidates` to 30000 — see the caution below.
 
 **`rt_check`** — `liri` (default) fits a per-class retention index from the
 run's own confident MS2 hits; safe but leaves classes without MS2 evidence
@@ -195,6 +197,35 @@ generic RT filter that removes in-source fragments.
 If you miss true positives, relax thresholds gradually; if you get too many
 false positives, tighten the score and RT cutoffs. Change one group at a time
 and diff the outputs.
+
+### Acyl-chain parameters (`l3_*`)
+
+Two of these are worth knowing before a run rather than after.
+
+**`l3_max_candidates`** (10000) caps enumeration per feature; beyond it the
+candidate list is stride-sampled. A single oxidised token such as `20:4;O`
+enumerates **~22,300** candidates, so on oxidised work the default silently
+discards the true structure *before scoring ever runs*. The output is
+indistinguishable from a scoring failure. **Raise it to 30000 whenever
+`acyl_analysis: ead2` is set on `;O` species.**
+
+**`l3_selection`** (`posterior`) decides which positional candidates get
+reported and when idlevel 4 commits to a position. `posterior` keeps the
+smallest candidate set holding 95% of the posterior mass and names a position
+only when one placement carries `l3_post_min_mass` (0.5). `legacy` is the old
+relative-score cutoff — it names more positions and is right less often
+(measured: 84/96 features asserted at 65% correct, versus 55/96 at 73%). Use
+`legacy` to reproduce pre-1.0.173 output, not to get more calls.
+
+`l3_post_temperature` and `l3_min_margin` are **fitted against reference sets
+with known positions**, not chosen by taste. Do not tune them to make output
+look better; changing them invalidates the calibration.
+
+> **Renamed in v1.0.173.** Every idlevel-3/4 parameter moved from `ead_*` to
+> `l3_*` (`ead_max_candidates` → `l3_max_candidates`, `ead_chain_cutoff` →
+> `l3_legacy_cutoff`, `include_ms1_monochain` → `l3_include_ms1_monochain`, and
+> so on). The old spellings still load as aliases, so **do not "fix" an existing
+> config** that uses them — but write new configs with `l3_*`.
 
 The complete annotated parameter file, with every key and its default, is in
 [reference/lipidoracle.default.yaml](reference/lipidoracle.default.yaml). Read
@@ -216,12 +247,34 @@ Identification levels encode how much evidence backs each call:
 | 1 | Precursor m/z only | Shorthand name: class, total carbons, total double bonds |
 | 2 | MS2 fragments matched, scored by `score_L2` | Class confirmed, often individual acyl chains |
 | 3 | EAD/UVPD isomer scoring, `score_L3` | C=C and oxidation positions along chains |
-| 4 | Consolidation | One row per spectrum merging all idlevel-3 candidates |
+| 4 | Consolidation | One row per spectrum merging all idlevel-3 candidates, with a confidence tail |
 
-Ambiguity is reported, not resolved: candidate structures are CXSMILES with
-`f:`, `m:`, `Sg:`, `ctu:` blocks marking uncertain positions and unknown
-sn-regiochemistry. A `/` between chains means sn-positions are known, `_` means
-they are not.
+`score_L3` is normalised against each spectrum's own best candidate, so **the top
+candidate always reads 1.0** whether the evidence is decisive or absent. It ranks
+within a spectrum; it does not measure confidence, and it is not comparable
+across engines. What separates a determined position from an undetermined one is
+whether idlevel 4 named it at all.
+
+Names are strict **Shorthand2020** (Liebisch et al.): modifications carry their
+position in front of the abbreviation, `;5OH` not `;OH(5)`. A `/` between chains
+means sn-positions are known, `_` means they are not.
+
+Ambiguity is reported, not resolved. Candidate structures are extended CXSMILES:
+`Sg:` marks a chain run holding an unlocalised double bond, `m:` a modification
+that could sit on any of several carbons, and `$snN$` labels plus a
+`swappable(...)` token an unresolved sn-assignment. **A fully determined
+structure has no `|...|` tail at all**, so the presence of a tail is itself the
+signal that something was left open.
+
+At idlevel 4 the `name` also carries a bracketed confidence tail —
+`FA 18:2 [DB sn1: Δ9 92%, Δ12 88%]`. Strip it before parsing the name; the part
+before ` [` is the strict Shorthand2020 core.
+
+**Do not report a species-level idlevel-4 name as a failure.** Since v1.0.173
+LipidOracle writes positions into the name only when the evidence supports one
+placement, so `FA 20:4` at idlevel 4 means the positions were *not determined* —
+which is a result, not a missing one. `diag/l3_resolvability.csv` says how
+uncertain it was.
 
 Column-by-column output reference: [reference/outputs.md](reference/outputs.md).
 
@@ -244,14 +297,28 @@ The repository ships two ready-to-run datasets under `testdata/`:
 | All RT values look ~60x too small | The MGF used minutes in `RTINSECONDS`. Re-export rather than patching the file. |
 | Results can't be joined to the upstream feature table | The MGF was exported without `FEATURE_ID`, so `mgf_feat` is empty. |
 | Config changes have no effect | Edited a file outside the mounted output folder, or a stray `*.yaml` in the output folder is being picked up first. |
-| `WORKFLOW.acyl_analysis: unrecognized value` | Use `False`, `ead1`/`v1`, or `ead2`/`v2`. |
+| `WORKFLOW.acyl_analysis: unrecognized value` | Use `False`, `ead1`/`v1`, `ead2`/`v2`, or `uvpd`. |
 | No idlevel 3 rows | `acyl_analysis` is `False`, or the data is CID and carries no EAD/UVPD fragments. |
+| idlevel 3 has candidates but idlevel 4 names no positions | Expected under `l3_selection: posterior` when the spectrum did not determine one. Check `top_prob` and `cred95` in `diag/l3_resolvability.csv` before changing anything. |
+| Oxidised lipids localise poorly | `acyl_analysis: ead1` ignores `;O` species entirely — use `ead2`. If already on `ead2`, `l3_max_candidates` is likely too low; raise it to 30000. |
+| Names changed shape vs an older run | v1.0.173 emits Shorthand2020 (`;5OH`, not `;OH(5)`) and drops `ctu:`/`f:`/`RG:` from CXSMILES. Expected, not a regression. |
 | Too many IDs removed | `rt_check: hydra` is strict; try `liri`, or `False` to see the unfiltered set. |
 | Dashboard plots are blank | Offline machine — the CDN libraries could not load. The CSVs are unaffected. |
 
 ## Reference
 
-Paper on the EAD annotation: <https://zamboni-lab.github.io/lipidoracle/>
+Documentation site: <https://zamboni-lab.github.io/lipidoracle/>
+
+| Page | Covers |
+| --- | --- |
+| [params](https://zamboni-lab.github.io/lipidoracle/params.html) | every `lipidoracle.yaml` setting |
+| [idlevel3](https://zamboni-lab.github.io/lipidoracle/idlevel3.html) | the EAD engines, candidate selection, every `l3_*` parameter |
+| [nomenclature](https://zamboni-lab.github.io/lipidoracle/nomenclature.html) | Shorthand2020, CXSMILES ambiguity encoding, the confidence tail |
+| [rt](https://zamboni-lab.github.io/lipidoracle/rt.html) | the retention-time engines |
+| [library](https://zamboni-lab.github.io/lipidoracle/library.html) | class coverage, extra libraries, rarity |
+
+What changed in the current release: [WHATSNEW.md](../../../WHATSNEW.md).
+
 Method: Wu et al., *Analyst*, 2025, [10.1039/d5an00567a](https://doi.org/10.1039/d5an00567a)
 
 Licensed PolyForm Noncommercial 1.0.0 — non-commercial use only, including
