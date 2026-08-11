@@ -1,5 +1,12 @@
 # What's new
 
+## v1.0.180
+
+### 1. Fisrt iplementation of Lipid Data Quality Scoring
+
+The LDQ implements the scoring proposed by Hofmann et al. (*J Lipid Res.* 2025; 66(8):100817). 
+Scores are reported in the ldq_* columns.
+
 ## v1.0.173
 
 Three changes matter to anyone reading LipidOracle output: names now follow
