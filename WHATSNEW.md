@@ -50,6 +50,23 @@ Extended CXSMILES is the canonical structure output, and its encoding of
 ambiguity was reworked and validated against **CDK**, the reference
 implementation for this format.
 
+**Removed:**
+
+- **`ctu:` blocks.** `ctu:` is a ChemAxon *query* feature meaning "match either
+  configuration", intended for substructure search. Most toolkits already treat
+  a bare `C=C` that way. Emitting it turned every partially determined structure
+  into a query without adding any information. A double bond of undetermined
+  geometry is now simply written `C=C`.
+- **`f:` component groups and `RG:` R-groups** for unresolved sn-position. Both
+  were unreadable to some common tooling, and the `RG:` form could not coexist
+  with `Sg:` at all — CDK rejects a nested CXSMILES block inside an R-group
+  definition, so a name carrying both kinds of ambiguity had to abandon one. An
+  R-group also stated the wrong cardinality: read ordinarily it admits
+  `PC 16:0/16:0` as well, and 27 assignments for a TG where the name allows 6.
+
+**In their place**, an unresolved sn-assignment is carried by `$snN$` atom
+labels on a **complete, connected molecule**, plus a `swappable(sn1,sn2)` token:
+
 ```
 PC 16:0_18:1(9)
 ↓
