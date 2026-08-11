@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nomenclature and CXSMILES – LipidOracle</title>
+    <style>
+        :root {
+            --bg: #f6f7f9;
+            --panel: #ffffff;
+            --text: #10151c;
+            --text-2: #45505f;
+            --muted: #6b7688;
+            --border: #e3e7ed;
+            --accent: #2f6df6;
+            --accent-text: #1b4fd0;
+            --radius: 12px;
+        }
+        @media (prefers-color-scheme: dark) {
+            :root:not([data-theme="light"]) {
+                --bg: #0c1017;
+                --panel: #141a24;
+                --text: #e8edf5;
+                --text-2: #b3becd;
+                --muted: #8593a6;
+                --border: #242d3b;
+                --accent: #6f9bff;
+                --accent-text: #a8c2ff;
+            }
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+        }
+        .wrap {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        h1 { font-size: 2.5rem; margin-bottom: 1rem; line-height: 1.2; }
+        h2 { font-size: 1.75rem; margin: 3rem 0 1rem 0; color: var(--accent-text); }
+        h3 { font-size: 1.25rem; margin: 1.5rem 0 0.75rem 0; }
+        h4 { font-size: 1.05rem; margin: 1.25rem 0 0.5rem 0; color: var(--text); }
+        p { margin-bottom: 1rem; max-width: 65ch; color: var(--text-2); }
+        a { color: var(--accent); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        code { background: var(--panel); padding: 0.2em 0.4em; border-radius: 4px; font-family: monospace; font-size: 0.95em; }
+        pre { background: var(--panel); padding: 1rem; border-radius: var(--radius); overflow-x: auto; margin: 1rem 0; border: 1px solid var(--border); }
+        pre code { background: none; padding: 0; }
+        table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; border: 1px solid var(--border); }
+        thead { background: var(--panel); border-bottom: 1px solid var(--border); }
+        th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--border); }
+        th { font-weight: 600; color: var(--accent-text); }
+        ul, ol { margin-left: 1.5rem; margin-bottom: 1rem; }
+        li { color: var(--text-2); margin-bottom: 0.35rem; }
+        nav { display: flex; gap: 1.5rem; margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border); }
+        nav a { font-size: 0.95rem; color: var(--text-2); }
+        .callout {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--accent);
+            border-radius: var(--radius);
+            padding: 1rem 1.25rem;
+            margin: 1.5rem 0;
+        }
+        .callout p:last-child, .callout ul:last-child { margin-bottom: 0; }
+        .callout ul { margin-bottom: 0.5rem; }
+        .table-scroll { overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <nav>
+            <a href="index.html">← Back to landing page</a>
+        </nav>
+        <article>
+<h1>Nomenclature and CXSMILES</h1>
+<p>LipidOracle emits <strong>Shorthand2020</strong> names — the notation defined by Liebisch et al. — as the canonical value of the <code>name</code> column, and <strong>extended CXSMILES</strong> as the canonical structure. Where the evidence does not determine a structure, the notation says so explicitly rather than guessing.</p>
+
+<div class="callout">
+  <p><strong>New in v1.0.173.</strong> Nomenclature and structure output were both reworked:</p>
+  <ul>
+    <li><strong>Shorthand2020 throughout.</strong> Positional modifiers are written <code>;11OH</code> and <code>;5oxo</code>, not the legacy <code>;OH(11)</code> / <code>;oxo(5)</code>. Legacy spellings are normalised at every input boundary, so older libraries and configs still load.</li>
+    <li><strong>CXSMILES fixed.</strong> The <code>ctu:</code> and <code>RG:</code> constructs are gone; sn-ambiguity is now carried by <code>$snN$</code> atom labels on a complete molecule. Output is validated against CDK.</li>
+    <li><strong>Localisation confidence is encoded</strong>, in the name as a bracketed tail and in the CXSMILES trailer as <code>dbPos(...)</code> / <code>mPos(...)</code>.</li>
+  </ul>
+</div>
+
+<h2>1. Shorthand2020 conventions</h2>
+
+<h3>Chain notation: <code>C:DB(positions)</code></h3>
+<p>Each acyl or sphingoid chain is written as carbon count, double-bond count, and optionally the explicit double-bond positions in Δ-numbering from the carboxyl carbon.</p>
+<ul>
+<li><code>16:0</code> — 16 carbons, saturated.</li>
+<li><code>18:1(9)</code> — one double bond at Δ9, geometry not determined.</li>
+<li><code>18:1(9Z)</code> — the same bond, determined as <em>cis</em>.</li>
+<li><code>20:4</code> — four double bonds, none of them localised.</li>
+</ul>
+
+<h3>Separator semantics: <code>/</code> vs <code>_</code></h3>
+<p>The separator between chains carries the regiochemistry, and is not cosmetic.</p>
+<div class="table-scroll">
+<table>
+<thead>
+<tr><th>Separator</th><th>Meaning</th><th>Example</th></tr>
+</thead>
+<tbody>
+<tr><td><code>/</code></td><td>sn-positions determined</td><td><code>PC 16:0/18:1(9Z)</code></td></tr>
+<tr><td><code>_</code></td><td>sn-positions not determined</td><td><code>PC 16:0_18:1(9)</code></td></tr>
+<tr><td>none</td><td>species level — only the totals are known</td><td><code>PC 34:1</code></td></tr>
+</tbody>
+</table>
+</div>
+<p>A species-level name is a valid annotation but has no structure: the chain split is not determined, so SMILES generation returns nothing rather than inventing one.</p>
+
+<h3>Modifications</h3>
+<p>Functional groups follow a semicolon, with the <strong>position in front of</strong> the abbreviation, comma-separated within a group type: <code>;11OH,15OH;9oxo</code>. Every group in Table 1A of Liebisch et al. that substitutes a single chain carbon is supported — hydroxyl, ketone, methyl, ethyl, methoxy, hydroperoxy, amino, thiol, nitrile, nitro, extra carboxyl, phosphate, sulfate and the halogens. Rings come from Table 1B: <code>;5Ep</code> for an epoxide, <code>;[11-13cy3:0]</code> for a carbocycle.</p>
+<p><strong>Legacy spellings are accepted and normalised.</strong> <code>;OH(11)</code>, <code>;hydroxy(11)</code>, <code>;oxo(5)</code>, <code>;ep(5)</code> and <code>;cyc(3)</code> all convert to the Table 1A form on input. Nothing in an existing library or config file needs rewriting.</p>
+<p><strong>Some names are rejected on purpose</strong> rather than guessed at:</p>
+<ul>
+<li>A group on <strong>C1</strong> of an acyl chain (<code>FA 18:0;1OMe</code>) — there the shorthand names the ester or amide linkage, not a substituent.</li>
+<li>A <em>localised</em> group combined with <em>unlocalised</em> double bonds when the group sits far enough along the chain to leave room for a bond on either side (<code>FA 18:2;5OH</code>). The name states a total and never says how the bonds divide across the split. Give the positions (<code>18:2(11,14);5OH</code>) and it resolves.</li>
+<li>Groups naming a class of attachment rather than one structure (<code>;G</code>, <code>;T</code>, <code>;oxy</code>, <code>;OO</code>), and Table 1C carbohydrate headgroups, which never state the glycosidic linkage positions.</li>
+</ul>
+
+<h2>2. Encoding ambiguity in CXSMILES</h2>
+<p>MS2 spectra frequently fail to determine a structure completely. Rather than picking one candidate arbitrarily, LipidOracle writes what was measured and marks what was not. Each kind of missing knowledge gets its own construct: where the CXSMILES standard has one, it is used as-is; where it has none, LipidOracle adds a token <em>after</em> the closing <code>|</code>, in the SMILES title field.</p>
+<div class="table-scroll">
+<table>
+<thead>
+<tr><th>Undetermined</th><th>Encoded as</th><th>Source</th></tr>
+</thead>
+<tbody>
+<tr><td>Double-bond geometry</td><td>bare <code>C=C</code></td><td>plain SMILES</td></tr>
+<tr><td>Double-bond position</td><td><code>Sg:</code> flexible run</td><td>CXSMILES standard</td></tr>
+<tr><td>…and the length of that run</td><td><code>constrain(a+b=15)</code></td><td>LipidOracle extension</td></tr>
+<tr><td>Modification position</td><td><code>m:</code> position variation</td><td>CXSMILES standard</td></tr>
+<tr><td>sn assignment</td><td><code>$snN$</code> atom labels</td><td>CXSMILES standard</td></tr>
+<tr><td>…and permission to permute them</td><td><code>swappable(sn1,sn2)</code></td><td>LipidOracle extension</td></tr>
+<tr><td>Confidence behind a double-bond call</td><td><code>dbPos(sn1:9@92,12@88)</code></td><td>LipidOracle extension</td></tr>
+<tr><td>Confidence behind a modification's position</td><td><code>mPos(sn1:11OH@64)</code></td><td>LipidOracle extension</td></tr>
+</tbody>
+</table>
+</div>
+<p>The two "…and" rows are the pattern in miniature: CXSMILES can mark a variable run but not say how long it is, and can label an atom but not say the labels may trade places. The structural half goes inside the <code>|...|</code> block, correct and complete; the half the standard cannot express goes after it.</p>
+<p><strong>A fully determined structure has no <code>|...|</code> tail at all.</strong> The presence of a tail is itself a signal that something was left open.</p>
+
+<h3>Geometry undetermined → nothing to add</h3>
+<p>A double bond in SMILES has three states: cis, trans, or unspecified — and unspecified is what a plain <code>C=C</code> already means.</p>
+<pre><code>FA 18:1(9)   (position known, geometry not determined)
+↓
+OC(=O)CCCCCCCC=CCCCCCCCC</code></pre>
+<p>Earlier versions emitted a <code>ctu:</code> block here. <strong>That was a mistake, and it has been removed.</strong> <code>ctu:</code> is a ChemAxon <em>query</em> feature meaning "match either configuration", intended for substructure search; most toolkits treat a bare <code>C=C</code> that way regardless. Emitting it turned every partially determined structure into a query without adding any information.</p>
+
+<h3>sn-position undetermined → <code>$snN$</code> labels</h3>
+<p>When chains are separated by <code>_</code>, the molecule is written out <strong>completely</strong>, with one representative assignment, and two annotations say the assignment is a choice rather than a measurement.</p>
+<pre><code>PC 16:0_18:1(9)
+↓
+C(COP(=O)([O-])OCC[N+](C)(C)C)(OC(=O)CCCCCCCC=CCCCCCCCC)COC(=O)CCCCCCCCCCCCCCC
+|$;;;;;;;;;;;;;sn2;;;;;;;;;;;;;;;;;;;;;sn1$| swappable(sn1,sn2)</code></pre>
+<ul>
+<li>The molecule is an ordinary, connected, fully parseable phosphatidylcholine. Nothing is detached and nothing is missing.</li>
+<li>The <code>$…$</code> block gives one <code>;</code>-separated slot per atom; the two non-empty slots name the ester oxygen each chain hangs from.</li>
+<li><code>swappable(sn1,sn2)</code> says those labelled positions may be permuted.</li>
+</ul>
+<p><strong>Why this shape.</strong> Two earlier encodings tried to keep the chains <em>outside</em> the molecule so the ambiguity would be structural — first an <code>f:</code> component group, then an <code>RG:</code> R-group with the chains as alternative definitions. Both were unreadable to common tooling, and decisively, the <code>RG:</code> form could not coexist with <code>Sg:</code>: CDK rejects a nested CXSMILES block inside an R-group definition, so a name carrying both kinds of ambiguity had to abandon one. An R-group also states the wrong cardinality — read the ordinary way it admits <code>PC 16:0/16:0</code> as well, and 27 assignments for a TG where the name allows 6. Labelling a complete molecule gives up the formal Markush semantics and gets back everything else: every toolkit reads the structure, and the ambiguities compose freely.</p>
+<p><strong>What it does not say.</strong> <code>swappable(...)</code> permits <em>any</em> permutation of the labelled positions. For two chains that is exactly right; for four (cardiolipin) it is weaker than the truth.</p>
+
+<h3>Double-bond position undetermined → <code>Sg:</code> block</h3>
+<p>LipidOracle does not guess a position. Every unlocalised double bond contributes a flexible-run marker plus an algebraic size constraint tying the markers together.</p>
+<pre><code>FA 20:4   (20 carbons, 4 double bonds, positions unknown)
+↓
+OC(=O)CC=CC=CC=CC=CC |Sg:n:3:a:ht,Sg:n:5:b:ht,Sg:n:7:c:ht,Sg:n:9:d:ht,Sg:n:12:e:ht| constrain(a+b+c+d+e=14)</code></pre>
+<p>Five markers for four double bonds — one run before the first bond, then one per bond. <code>constrain(a+b+c+d+e=14)</code> requires the five variable runs to sum to 14 carbons, so the chain still totals 20 carbons with exactly 4 double bonds somewhere in it.</p>
+
+<h3>Modification position undetermined → <code>m:</code> block</h3>
+<p>A modification written <em>with</em> a position (<code>;5OH</code>) is drawn at that carbon and gets no block at all. Only the position-less form needs one.</p>
+<pre><code>DG 18:0/18:2(9,12);OH
+↓
+C(CO)(OC(=O)CCCCCCCC=CCC=CCCCCC.*O)COC(=O)CCCCCCCCCCCCCCCCC
+|m:23:6.7.8.9.10.11.12.13.14.15.16.17.18.19.20.21.22|</code></pre>
+<p>The hydroxyl is appended as its own <code>*O</code> component, and <code>m:</code> — a CXSMILES position-variation bond — says atom 23 attaches to exactly one of the listed carbons, C2 through C18. C1 is excluded: it is the ester carbonyl, not a substitutable methylene.</p>
+<p><strong>Atom 23 is the <code>*</code>, not the oxygen.</strong> A position-variation bond's variable end must be a dummy atom carrying exactly one bond. CDK silently ignores an <code>m:</code> block pointing anywhere else and other toolkits reject the string outright, so the component is written <code>*O</code>: the <code>*</code> takes the variable bond, the <code>O</code> is the hydroxyl it carries. The oxygen adds no carbon, so the formula stays exact. Every unlocalised group follows the same shape — <code>*=O</code> for a ketone, <code>*C(=O)O</code> for an extra carboxyl, <code>*[N+](=O)[O-]</code> for a nitro.</p>
+
+<h3>Stored string vs depicted image</h3>
+<p>The structure view does not draw the stored string verbatim. Before depiction it is rewritten, and the rewrite is deliberately lossy in two respects.</p>
+<div class="table-scroll">
+<table>
+<thead>
+<tr><th>Stored (exact)</th><th>Depicted</th><th>Why</th></tr>
+</thead>
+<tbody>
+<tr><td><code>Sg:</code> runs</td><td>literal CH₂ carbons at one arbitrary even split</td><td>most depicters ignore <code>Sg:</code> and would draw a chain many carbons short</td></tr>
+<tr><td><code>$snN$</code> + <code>swappable(...)</code></td><td>dropped</td><td>the molecule underneath is already complete; only the note that the assignment was arbitrary is lost</td></tr>
+</tbody>
+</table>
+</div>
+<p>What that costs: a depicted double-bond position is a <em>representative</em> candidate, not a determination, and the image alone cannot distinguish a depicted Δ6 from a measured one. <strong>Trust the stored string; read the image as a diagram.</strong></p>
+<p>Two things worth knowing if you consume the SMILES column. <strong>A renderer that ignores <code>Sg:</code> fails silently</strong> — no warning, just a molecule with most of the chain missing — which is the dangerous case precisely because it looks like it worked. And <strong>the trailer does not survive a round trip</strong> through a toolkit: the <code>|...|</code> block is renumbered correctly, but <code>constrain(...)</code> and <code>swappable(...)</code> live in the title field and are dropped, leaving <code>Sg:</code> runs with no length and <code>snN</code> labels with no permission to permute. Preserve the trailer yourself if something rewrites these strings.</p>
+<p>CXSMILES output is validated against <strong>CDK</strong>, the reference implementation for this encoding and the renderer used for every depiction in the dashboard.</p>
+
+<h2>3. Localisation confidence</h2>
+<p>At idlevel 4, where positions are consolidated across candidates, the confidence behind each call is appended to the name in brackets:</p>
+<pre><code>FA 20:4;OH [DB sn1: Δ5 100%, Δ8 100%, Δ12 100%, Δ14 50%, Δ15 50%; OH sn1: 11 100%]</code></pre>
+<p>Positions are comma-separated and each carries its own support. Aspects (<code>DB</code>, <code>OH</code>, <code>oxo</code>) and chains are separated by <code>;</code>. Read this as: a hydroxyl is present and the evidence puts it at C11 with full support; three double bonds are called at Δ5/Δ8/Δ12 with no dissent, and the fourth is supported half at Δ14 and half at Δ15.</p>
+<p><strong>Note where the hydroxyl position lives — in the tail, not the name body.</strong> Writing it into the body (<code>FA 20:4;11OH [...]</code>) would make the name unrepresentable, because a group positioned mid-chain alongside unlocalised double bonds does not say how those bonds divide around it. Leaving the group unpositioned in the body and stating its position as consensus is both representable and a truer record of what was measured.</p>
+<p>The same numbers ride along in the CXSMILES, anchored to labels:</p>
+<pre><code>OC(=O)CC=CC=CC=CC=CC.*O
+|$;sn1;;;;;;;;;;;;OH1$,Sg:n:3:a:ht,Sg:n:5:b:ht,Sg:n:7:c:ht,Sg:n:9:d:ht,Sg:n:12:e:ht,m:13:3.4.5.6.7.8.9.10.11.12|
+constrain(a+b+c+d+e=14);dbPos(sn1:5@100,8@100,12@100,14@50,15@50);mPos(sn1:11OH@100)</code></pre>
+<p>Read the two halves separately. The <strong>CXSMILES</strong> commits only to what the evidence determines: the markers all stay and no position is asserted. The <strong>trailer</strong> then adds the odds. Converting back recovers the name in full, percentages included.</p>
+
+<h3>What the percentage means</h3>
+<p>It depends on which selection method produced it, and the two are not interchangeable:</p>
+<ul>
+<li>Under <code>l3_selection: posterior</code> (the default since v1.0.173), each figure is that position's <strong>marginal probability</strong> under the posterior over candidates.</li>
+<li>Under <code>l3_selection: legacy</code>, it is the fraction of retained candidate hypotheses supporting the position — candidate support, not a calibrated probability.</li>
+</ul>
+<p>See <a href="idlevel3.html">Acyl-chain analysis</a> for how candidates are retained and why the default changed.</p>
+<p>Consensus percentages apply <strong>per chain</strong> and are independent of sn-position ambiguity:</p>
+<pre><code>PC 16:0_18:1 [DB sn2: Δ9 80%, Δ11 20%]
+   ↑                    ↑
+   │                    └─ within that chain, Δ9 is favoured 4:1 over Δ11
+   └─ which chain is sn-1 vs sn-2 was not determined</code></pre>
+<p>If you need every alternative as its own row rather than as odds on one row, read the full annotation CSV: it preserves the confidence tail in <code>name</code> and lists each candidate individually at idlevel 3.</p>
+
+<h2>References</h2>
+<ul>
+<li><strong>Lipid shorthand and ID levels:</strong> Liebisch G, et al. "Update on LIPID MAPS classification, nomenclature, and shorthand notation for MS-derived lipid structures." <em>J Lipid Res.</em> 2020;61(12):1539–1555.</li>
+<li><strong>Lipid classification:</strong> Fahy E, et al. "Lipid classification, structures and tools." <em>Biochim Biophys Acta.</em> 2011;1811(11):637–647.</li>
+<li><strong>CXSMILES specification:</strong> <a href="https://docs.chemaxon.com/latest/formats_chemaxon-extended-smiles-and-smarts-cxsmiles-and-cxsmarts.html">ChemAxon Extended SMILES and SMARTS</a>.</li>
+<li><strong>Reference implementation:</strong> <a href="https://github.com/zamboni-lab/lipidoracle-smiles">lipidoracle-smiles</a>.</li>
+</ul>
+</article>
+    </div>
+</body>
+</html>

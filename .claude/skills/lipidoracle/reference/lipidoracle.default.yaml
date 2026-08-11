@@ -36,8 +36,11 @@ WORKFLOW:
 
   ## Optional acyl-chain C=C (+ oxygen site) assignment
   #   False   -> analysis is skipped.
-  #   ead1    -> legacy heuristic chain-ladder engine, without oxygen support
-  #   ead2    -> PUFAs with oxidation
+  #   ead1    -> heuristic chain-ladder engine. Skips oxidized species.
+  #   ead2    -> exact-formula cleavage engine; required for oxidized lipids
+  #              (anything carrying ';O'), which ead1 ignores entirely.
+  #   uvpd    -> for 193/213 nm ultraviolet photodissociation data.
+  #   True    -> accepted for backwards compatibility, and means ead1. 
   acyl_analysis: False
 
   ## Retention-time filtering
@@ -54,10 +57,7 @@ WORKFLOW:
   #               SMILES fragments, with an absolute + pairwise relative
   #               z-score decision layer. Remove also idlevel 1 hits, but is very conservative
   #   legacy   -> the original two filters (generic formula-based regression
-  #               + per-class regression), always run together. Superseded
-  #               by LiRI on every metric in docs/RT_COMPARISON.MD (the
-  #               class filter alone is close to a coin flip); kept for
-  #               comparison/rollback.
+  #               + per-class regression), always run together.
   rt_check: liri
 
   rt_ref: '/output/rt_ref_2min.csv'
@@ -68,6 +68,10 @@ WORKFLOW:
   is_peaks: ''
   
 PARAM:
+  # Emit Hoffmann (2025) evidence-completeness score columns. This is a
+  # reporting score, not a probability, and is comparable only within a group.
+  hoffmann_scoring: false
+
   ## Performance + matching behavior
   # Number of CPU cores used for MS2 scoring.
   ncores: 6
@@ -144,30 +148,113 @@ PARAM:
   # Deduplication/consistency filtering on MS1 IDs. Disable for debugging.
   ms1_filter: True
 
-  ## Acyl-Analysis (EAD, UVPD) 
+  ## Acyl-analysis: shared settings (all engines)
+  # Every parameter governing idlevel 3/4 is prefixed l3_. The generic ones
+  # below apply whatever engine WORKFLOW.acyl_analysis selects; l3_legacy_* and
+  # l3_post_* below configure the two candidate-selection methods.
+  # (The former ead_*/include_ms1_monochain spellings are still accepted.)
+  #
   # If True, also run C=C analysis for idlevel 1 single-acyl unsaturated lipids
   # such as LPC/LPE after MS1, IS, cleanup, and RT filtering.
-  include_ms1_monochain: True
-  # Maximum unsaturation complexity accepted for exhaustive EAD positional search.
-  ead_max_unsaturated: 6
-  # Maximum total hydroxyl/oxygen positions accepted for exhaustive EAD v2/v3 search.
-  ead_max_oxygen: 2
-  # Hard cap on EAD candidate enumeration per feature (prevents combinatorial blow-up).
-  # A single oxidized chain token (e.g. 20:4;O) enumerates ~22k (db, oh/ket
-  # position) candidates. Set it to 5000 or 10000 for non-oxidated chains, 30000 for oxidized chains.
-  ead_max_candidates: 10000
-  # Max number of EAD candidate to store
-  ead_max_output: 20
-  # Weight of chain correlation term in EAD final score.
-  ead_chain_corr_weight: 0.05
-  # Intensity transform for EAD v2 and v4 stage 1: none, sqrt/light, log10, ln, or log2.
-  ead_intensity_scaling: 'none'
-  # For EAD v4, sweep several noise floors and retain the most discriminating result.
-  ead_noise_sweep: False
-  # Relative EAD score cutoff vs top EAD candidate.
-  ead_chain_cutoff: 0.99
-  # Absolute minimum EAD score to keep a DB-position assignment.
-  ead_min_score: 0.2
+  l3_include_ms1_monochain: True
+  # Maximum unsaturation complexity accepted for exhaustive positional search.
+  l3_max_unsaturated: 6
+  # Maximum total hydroxyl/oxygen positions accepted for exhaustive search.
+  # Used by ead2 and uvpd; ead1 has no oxygen support and ignores it.
+  l3_max_oxygen: 2
+  # Hard cap on candidate enumeration per feature (prevents combinatorial
+  # blow-up). A single oxidized chain token (e.g. 20:4;O) enumerates ~22k
+  # (db, oh/ket position) candidates. Set 5000-10000 for non-oxidized chains,
+  # 30000 for oxidized ones.
+  l3_max_candidates: 10000
+  # Max candidates written to diag/annotation_idlevel3.csv per feature. This
+  # caps only what is reported.
+  l3_max_output: 20
+  # Weight of the chain correlation term in the final idlevel-3 score.
+  # No longer used by any engine: ead2 never had a correlation term, and
+  # ead1's was dropped when its score became intensity-aware. Kept accepted
+  # so existing configs keep loading.
+  l3_chain_corr_weight: 0.05
+  # Intensity transform applied before scoring: none, sqrt/light, log10, ln,
+  # or log2. Used by ead2 only -- ead1 always applies sqrt, which is part of
+  # its scoring model rather than a tunable (see dev/EAD.md).
+  l3_intensity_scaling: 'none'
+  # Absolute minimum idlevel-3 score to keep a position assignment.
+  l3_min_score: 0.2
+  # Minimum relative gap between the best and second-best candidate,
+  # (s1 - s2) / s1 on the raw score scale, before positions are written into
+  # the idlevel-4 name. Below it the chain is reported at species level
+  # (FA 20:4, not FA 20:4(5,8,11,14)) and the alternatives stay in the
+  # confidence tail. Set 0 to name every feature.
+  #
+  # Fitted, not chosen: swept against known positions in testdata/ara-ead and
+  # testdata/light-ead. Below 0.02 the top call is right 16-23% of the time;
+  # above 0.05 it is right 86-97%. Used by ead1.
+  l3_min_margin: 0.05
+  # Minimum peaks the winning candidate must have matched before its lead
+  # counts as evidence. Guards l3_min_margin, which is relative and so can
+  # look decisive when the whole comparison rests on one or two peaks -- the
+  # failure mode behind confident-but-wrong monoene calls on
+  # testdata/light-ead. Raising this past 3 costs assertions at no gain in
+  # precision. Used by ead1.
+  l3_min_matched: 3
+  # Diagnostic: also score chemically impossible (allene) placements as a null,
+  # to see where "indistinguishable from impossible" falls. Never emitted as an
+  # annotation; adds a null_rel column to diag/l3_resolvability.csv.
+  l3_null_decoys: False
+
+  ## Acyl-analysis: candidate selection and idlevel-4 naming
+  # Which positional isomers are reported, and how confidently idlevel 4 is
+  # named. Orthogonal to WORKFLOW.acyl_analysis: either method works with any
+  # engine.
+  #   posterior -> convert scores to a probability distribution over candidates,
+  #                report the smallest set holding l3_post_credible_level of
+  #                that probability, and write positions into the idlevel-4
+  #                name only when one placement carries at least
+  #                l3_post_min_mass. The confidence tail then reports each
+  #                position's marginal probability
+  #                ("[DB sn1: d5 93%, d14 55%, ...]").
+  #   legacy    -> the original method (Wu et al.): report every candidate
+  #                scoring within l3_legacy_cutoff of the top one, and name
+  #                idlevel 4 where those candidates happen to agree. The tail
+  #                reports vote counts over that set, not probabilities.
+  #                Accepted as 'cutoff' too, its former name.
+  #
+  # Which to use: 'legacy' names more features but is right less often.
+  # Measured on testdata/hete-ead with ead2, legacy asserts a C=C position on
+  # 84 of 96 features and is right on 55 (65%); posterior asserts 55 and is
+  # right on 40 (73%).
+  l3_selection: 'posterior'
+
+  ## ...when l3_selection: legacy
+  # Relative score cutoff vs the top candidate.
+  #
+  # Note this threshold is weakly discriminating: scored against chemically
+  # impossible (allene) placements, an impossible candidate lands within 1% of
+  # the best real one in ~11% of features. See dev/FDR_PLAN.md section 5.5.
+  l3_legacy_cutoff: 0.99
+
+  ## ...when l3_selection: posterior
+  # Posterior mass the reported credible set must reach.
+  l3_post_credible_level: 0.95
+  # Minimum posterior mass on a single placement before its positions are
+  # written into the idlevel-4 name. Below this the chain is reported at
+  # species level (FA 20:4 rather than FA 20:4(5,8,11,14)) -- the positions
+  # were never determined, and the confidence tail still lists what is known.
+  l3_post_min_mass: 0.5
+  # Softmax temperature turning normalized candidate scores into
+  # probabilities.
+  #
+  # Fitted, not chosen: swept against known positions in testdata/ara-ead and
+  # testdata/hete-ead, where 0.01 maximises discrimination while keeping
+  # calibration error low. Larger values flatten the posterior towards
+  # chance; smaller ones manufacture confidence.
+  #
+  # Re-verified after ead1's score changed scale (dev/v1_plan.md): on
+  # ara-ead and light-ead, 0.001 and 0.01 give identical idlevel-4 output,
+  # while 0.05 and 0.2 abstain on 40-60% more features at no gain in
+  # precision. Re-fit with dev/l3_validate.py if scoring changes again.
+  l3_post_temperature: 0.01
 
   ## RT general
   # Relative to the observed RT-axis length when <= 1; absolute seconds when > 1.

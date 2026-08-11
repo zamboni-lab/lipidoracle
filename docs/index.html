@@ -222,8 +222,17 @@ section + section { border-top: var(--rule); }
   transition: color .18s ease;
 }
 .nav-links a:hover { color: var(--text); }
+.nav-links a.nav-gh {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.nav-links a.nav-gh svg { display: block; }
 @media (max-width: 720px) {
   .nav-links a[data-secondary] { display: none; }
+  .nav-links a.nav-gh span { display: none; }
+  .nav-links a.nav-gh { gap: 0; }
+  .nav-links a.nav-gh svg { width: 18px; height: 18px; }
 }
 
 /* ---- buttons -------------------------------------------------- */
@@ -812,6 +821,10 @@ footer p { margin: 0; }
       <a href="#rt-check" data-secondary>RT check</a>
       <a href="#rt" data-secondary>FAIR reporting</a>
       <a href="#docs">Docs</a>
+      <a class="nav-gh" href="https://github.com/zamboni-lab/lipidoracle" aria-label="LipidOracle on GitHub">
+        <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82a7.42 7.42 0 0 1 2-.27c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+        <span>GitHub</span>
+      </a>
     </nav>
   </div>
 </header>
@@ -823,7 +836,7 @@ footer p { margin: 0; }
       <div>
         <h1>Lipid annotation from MS data</h1>
         <p>
-          Complete annotation engine for CID, EAD, and UVPD spectra, from shortname to C=C 
+          Complete annotation engine for CID, EAD, and UVPD spectra, from shorthand to C=C
           and oxidation localization in acyl chains. Rust-based. Runs as a Docker container.
         </p>
         <p>
@@ -981,12 +994,14 @@ footer p { margin: 0; }
             With EAD or UVPD spectra, it's possible to analyse the feature for C=C and oxidation position in its acyl chains.
             <code>score_L3</code> compares simulated isomer spectra, with separate scoring
             for lipids and for oxidised PUFAs. The complexity increases with multiple chains.
+            Since v1.0.173 both engines are intensity-aware, which lifted top-1 positional accuracy from 28% to 80% on the reference set.
           </p>
         </div>
         <div class="level level-4">
           <span class="level-num">IDLEVEL 4</span>
           <h3>Consolidation of isomers</h3>
-          <p>One row per spectrum, aggregating all <code>idlevel 3</code> candidates into a single expression that captures consensus across thousands of candidates.</p>
+          <p>One row per spectrum, aggregating all <code>idlevel 3</code> candidates into a single expression that captures consensus across thousands of candidates.
+            Candidates are retained by <strong>posterior mass</strong>, not by a score ratio, so the size of the reported set is itself the confidence statement — and a position that was never determined is now reported as undetermined rather than asserted.</p>
         </div>
 
       <figure>
@@ -1063,6 +1078,9 @@ footer p { margin: 0; }
         <p>
           Multiple candidates often tie for the same score, or score within noise of each other. Rather than arbitrarily picking one, LipidOracle reports the ambiguity itself: CXSMILES depictions show every surviving candidate and the confidence score for each.
         </p>
+        <p>
+          Names follow <strong>Shorthand 2020</strong> (Liebisch et al.) exactly — positional modifiers as <code>;11OH</code>, legacy spellings normalised on input — and structures are emitted as extended CXSMILES validated against CDK. See <a href="nomenclature.html">Nomenclature and CXSMILES</a>.
+        </p>
       </div>
 
       <div class="two-box">
@@ -1070,12 +1088,22 @@ footer p { margin: 0; }
           <h3>CXSMILES</h3>
           <p>
             Every candidate structure is encoded as CXSMILES, a canonical SMILES string that explicitly marks uncertain double-bond, oxidation, or connectivity positions.
-            The extension with <code>f:</code>, <code>m:</code>, <code>Sg:</code>, <code>ctu:</code> blocks enable to precisely declare ambiguity in a machine-readable format.
+            The <code>Sg:</code> and <code>m:</code> blocks plus <code>snN</code> atom labels declare ambiguity precisely, in a machine-readable format.
           </p>
-          <pre class="cx"><span class="cx-name"><span class="cx-bb">DG</span> 18:1(9);OH(5)<span class="cx-ext">_</span><span class="cx-ac">18:1</span>;<span class="cx-ru">OH</span></span>
+          <pre class="cx"><span class="cx-name"><span class="cx-bb">DG</span> 18:1(9);5OH<span class="cx-ext">_</span><span class="cx-ac">18:1</span>;<span class="cx-ru">OH</span></span>
 <span class="cx-mute">↓</span>
-<span class="cx-bb">C(CO)(O<span class="cx-ext">*</span>)CO</span><span class="cx-ext">*</span><span class="cx-mute">.</span><span class="cx-ext">*</span>C(=O)CCCC(O)CCCC=CCCCCCCCC<span class="cx-mute">.</span><span class="cx-ext">*</span><span class="cx-ac">C(=O)CC=CC</span><span class="cx-mute">.</span><span class="cx-ru">[OH]</span>
-<span class="cx-ext">|f:0.1,0.2</span>,<span class="cx-ac">Sg:n:32:a:ht,Sg:n:35:b:ht,</span><span class="cx-ru">m:36:32.33.34.35</span>,ctu:18,31| <span class="cx-ac">a+b=15</span></pre>
+<span class="cx-bb">C(CO)(</span><span class="cx-ext">O</span><span class="cx-ac">C(=O)CC=CC</span><span class="cx-mute">.</span><span class="cx-ru">*O</span><span class="cx-bb">)C</span><span class="cx-ext">O</span>C(=O)CCCC(O)CCCC=CCCCCCCCC
+|<span class="cx-ext">$;;;sn2;;;;;;;;;;sn1$</span>,<span class="cx-ac">Sg:n:6:a:ht,Sg:n:9:b:ht</span>,<span class="cx-ru">m:10:6.7.8.9</span>|
+<span class="cx-ext">swappable(sn1,sn2)</span>;<span class="cx-ac">constrain(a+b=15)</span></pre>
+          <p>
+            Three independent uncertainties, stated in one string: a double bond whose <em>position</em> is undetermined becomes a variable-length run; a hydroxyl with no assigned carbon becomes a bond that may land on any of them; and where the sn-position itself is undetermined, the linking atoms are labelled and declared swappable. The other chain is fully determined, so it is simply written out.
+          </p>
+          <p>
+            The molecule stays whole and every toolkit reads it as the lipid it is — the uncertainty rides along as annotation rather than dismantling the structure. Earlier releases dismantled it: an <code>f:</code> component group, then an <code>RG:</code> R-group, both unreadable to common tooling and unable to coexist with <code>Sg:</code>. Those are gone, as is the <code>ctu:</code> block, which turned every partially determined structure into a substructure query without adding information.
+          </p>
+          <p>
+            At idlevel 4 the localisation confidence rides in the trailer too, as <code>dbPos(...)</code> and <code>mPos(...)</code> tokens anchored to the same labels — so a name converts to CXSMILES and back with its percentages intact.
+          </p>
           <ul class="cx-key">
             <li><span class="cx-swatch cx-bb"></span>glycerol backbone</li>
             <li><span class="cx-swatch cx-ac"></span>acyl chain undefined C=C position</li>
@@ -1087,7 +1115,7 @@ footer p { margin: 0; }
         <div class="box-depiction">
           <h3>Structure depiction</h3>
           <p>
-            The ambiguity is depicted in the structures shown in the dashboard, which are calculated on the fly. Alternatively, LipidOracle can expand variable parts to create one representative isomers for compatibility with RDKit
+            The ambiguity is depicted in the structures shown in the dashboard, which are calculated on the fly. Alternatively, LipidOracle can expand variable parts to create one representative isomer for compatibility with renderers that do not draw variable-length regions
           </p>
           <figure>
             <div class="shot-frame">
@@ -1174,9 +1202,17 @@ footer p { margin: 0; }
           <span class="doclink-name">Acyl chains analysis by EAD</span>
           <span class="doclink-desc">Locating double bonds and oxygen along each chain, and the limits of that call.</span>
         </a>
+        <a class="doclink" href="nomenclature.html">
+          <span class="doclink-name">Nomenclature and CXSMILES</span>
+          <span class="doclink-desc">Shorthand 2020 names, how ambiguity is encoded, and what the confidence tail means.</span>
+        </a>
         <a class="doclink" href="params.html">
           <span class="doclink-name">Parameters</span>
           <span class="doclink-desc">Every setting in <code>lipidoracle.yaml</code>, with defaults and when to change them.</span>
+        </a>
+        <a class="doclink" href="https://github.com/zamboni-lab/lipidoracle/blob/master/WHATSNEW.md">
+          <span class="doclink-name">What's new in v1.0.173</span>
+          <span class="doclink-desc">Shorthand 2020 adherence, fixed CXSMILES, and posterior candidate retention.</span>
         </a>
       </div>
     </div>

@@ -43,7 +43,18 @@
         h1 { font-size: 2.5rem; margin-bottom: 1rem; line-height: 1.2; }
         h2 { font-size: 1.75rem; margin: 3rem 0 1rem 0; color: var(--accent-text); }
         h3 { font-size: 1.25rem; margin: 1.5rem 0 0.75rem 0; }
+        h4 { font-size: 1.05rem; margin: 1.25rem 0 0.5rem 0; color: var(--text); }
         p { margin-bottom: 1rem; max-width: 65ch; color: var(--text-2); }
+        .callout {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--accent);
+            border-radius: var(--radius);
+            padding: 1rem 1.25rem;
+            margin: 1.5rem 0;
+        }
+        .callout p:last-child, .callout ul:last-child { margin-bottom: 0; }
+        .callout ul { margin-bottom: 0.5rem; }
         a { color: var(--accent); text-decoration: none; }
         a:hover { text-decoration: underline; }
         code { background: var(--panel); padding: 0.2em 0.4em; border-radius: 4px; font-family: monospace; font-size: 0.95em; }
@@ -68,24 +79,50 @@
 <p>MS2 matching tells you a lipid is <code>PE 18:1_20:4</code>. It does not tell you <em>where</em> on those chains the double bonds sit, or where a hydroxyl group has been added. Acyl-chain analysis answers that second question.</p>
 <p>It runs on lipids that have <strong>already been identified</strong>, taking their EAD spectra and localising double-bond and oxygen positions along each chain.</p>
 <pre><code class="language-yaml">WORKFLOW:
-  acyl_analysis: v2   # False | v1 | v2 (experimental)
+  acyl_analysis: ead2   # False | ead1 | ead2 | uvpd
 </code></pre>
-<p>This step is off by default. It requires EAD spectra: it cannot extract positional information from CID or other dissociation methods.</p>
+<p>This step is off by default. It requires EAD spectra: it cannot extract positional information from CID or other dissociation methods. (<code>v1</code>/<code>v2</code> are accepted as aliases of <code>ead1</code>/<code>ead2</code>.)</p>
+<div class="callout">
+  <p><strong>New in v1.0.173.</strong> Both engines were reworked, and candidate retention no longer depends on a score ratio. Three changes matter for anyone reading <code>score_L3</code>:</p>
+  <ul>
+    <li><strong>ead1 is now intensity-aware</strong>, which lifted top-1 positional accuracy from 28% to 80% on the arachidonic-acid reference set. Its old Pearson-correlation term is gone.</li>
+    <li><strong>Candidate retention is posterior-based by default</strong> (<code>l3_selection: posterior</code>). The size of the reported candidate set is now itself the confidence statement.</li>
+    <li><strong>Every parameter on this page was renamed <code>ead_*</code> → <code>l3_*</code></strong>. The old spellings still load, so existing configs keep working.</li>
+  </ul>
+</div>
 <h2>The two engines</h2>
-<p>The <code>score_L3</code> column carries the localisation score, and <code>score_L3_data</code> and <code>ms2_evidence</code> record the supporting evidence. The mapping between raw scores and the reported 0–1 range differs between engines, so <strong>equal <code>score_L3</code> values from different engines are not equivalent evidence</strong> and should not be compared across runs configured differently.</p>
-<h3>v1: Fixed ladder, non-oxidised</h3>
-<p>v1 is the published method, described in full in Wu et al, <em>Analyst</em>, 2025, <a href="https://doi.org/10.1039/d5an00567a">10.1039/d5an00567a</a>. For the experimental background, why EAD cleaves bonds that CID leaves intact and what the resulting fragment ladder looks like, see <a href="https://metabolomics.blog/2024/04/ead-and-lipidomics/">On the benefits and role of electron-induced dissociation in lipidomics</a>.</p>
+<p>The <code>score_L3</code> column carries the localisation score, and <code>score_L3_data</code> and <code>ms2_evidence</code> record the supporting evidence. Both engines are now intensity-aware — a candidate's raw score is <code>Σ(weight × matched intensity)</code> over the fragments it predicts — but they differ in the fragment-mass model, the intensity transform, and the candidate set the normalisation is estimated over. <strong>Equal <code>score_L3</code> values from different engines are not equivalent evidence</strong> and should not be compared across runs configured differently.</p>
+<h3>ead1: Fixed ladder, non-oxidised</h3>
+<p>ead1 implements the published method, described in full in Wu et al, <em>Analyst</em>, 2025, <a href="https://doi.org/10.1039/d5an00567a">10.1039/d5an00567a</a>. For the experimental background, why EAD cleaves bonds that CID leaves intact and what the resulting fragment ladder looks like, see <a href="https://metabolomics.blog/2024/04/ead-and-lipidomics/">On the benefits and role of electron-induced dissociation in lipidomics</a>.</p>
 <p>It runs in four steps:</p>
 <ol>
 <li><strong>Enumerate the hypotheses.</strong> For a chain of <em>C</em> carbons carrying <em>n</em> double bonds, every placement of those <em>n</em> bonds across positions 2 to <em>C</em>−1 is generated, excluding adjacent placements. Saturated chains, and chains under four carbons, yield a single trivial variant.</li>
-<li><strong>Simulate the ladder.</strong> Each hypothesis is walked bond by bond from the methyl tail toward the carboxyl head. An ordinary step loses CH₂; a step crossing a double bond loses CH instead, and that is what shifts the ladder's spacing at the double bond. Every bond emits three neutral-loss variants, labelled <code>0</code>, <code>-H</code> and <code>+H</code> (losses of CH₂, CH₃ and CH), weighted 10, 3 and 1 so the homolytic cleavage dominates.</li>
-<li><strong>Weight by distance to the nearest double bond.</strong> Each step's weight is scaled by a hand-tuned array indexed on how many bonds separate it from the nearest double bond, counted on both sides: 0.5 at the bond itself, 1 one bond away, <strong>6 at two bonds</strong>, 1 at three, 0.5 at four and five, and 1 beyond. That spike at two bonds is where the positional signal actually lives. Near the head the <code>0</code> and <code>-H</code> weights swap, and the last two bonds take a fixed bonus.</li>
-<li><strong>Match and score.</strong> Predicted fragments from all chains are pooled and binned by m/z, with coincident masses summing their weights. Observed peaks are matched one-to-one against them within tolerance, by maximum bipartite matching, so no peak is counted twice. <code>score_L3</code> then blends two terms: the share of predicted weight that found a match, and the Pearson correlation between measured intensities and predicted weights across the matched peaks.</li>
+<li><strong>Simulate the ladder.</strong> Each hypothesis is walked bond by bond from the methyl tail toward the carboxyl head. An ordinary step loses CH₂; a step crossing a double bond loses CH instead, and that is what shifts the ladder's spacing at the double bond. Every bond emits three neutral-loss variants, labelled <code>0</code>, <code>-H</code> and <code>+H</code> (losses of CH₂, CH₃ and CH), weighted so the homolytic cleavage dominates.</li>
+<li><strong>Weight by distance to the nearest double bond.</strong> Each step's weight is scaled by a hand-tuned array indexed on how many bonds separate it from the nearest double bond: 0.5 at the bond itself, 1 one bond away, <strong>6 at two bonds</strong>, 1 at three, 0.5 at four and five, and 1 beyond. That spike at two bonds is where the positional signal actually lives. A bond flanked by two double bonds now takes <code>max(left, right)</code> of the two lookups rather than whichever happened to be evaluated last.</li>
+<li><strong>Match and score.</strong> Predicted fragments from all chains are pooled and binned by m/z, with coincident masses summing their weights. Observed peaks are matched one-to-one against them within tolerance, by maximum bipartite matching, so no peak is counted twice.</li>
 </ol>
-<p>v1 does <strong>not</strong> support oxidised lipids at all. Oxidation parameters are ignored; chains with <code>;O</code> are filtered out entirely.</p>
-<p><strong>Validation:</strong> tuned and regression-tested on non-oxidised glycerolipids (<code>ara-ead</code> fixture, 114 spectra of arachidonic acid fatty acids).</p>
-<h3>v2: Exact formulas, oxidised, experimental</h3>
-<p>v2 takes the opposite approach: computes exact elemental-formula losses for every cleavage, and scores independently against each observed peak (not one-to-one matching). It supports hydroxyl and ketone oxygens natively.</p>
+<h4>What changed in v1.0.173</h4>
+<p>ead1's score used to be <em>matched weight / total predicted weight</em> — the fraction of its own ladder that found any peak at all. Because the engine emits three neutral-loss variants at every bond, that ladder covers nearly every nominal mass in the window, so roughly 50 of 57 bins matched for <em>every</em> hypothesis alike. On a typical spectrum the entire spread across chemically unrelated structures was 0.880–0.890: the ranking inside that 1% band was noise, and a 0.99 relative cutoff kept all of it.</p>
+<p>The score is now the raw sum <code>Σ(weight × √intensity)</code> over matched peaks, mapped back into <code>[0,1]</code> by the same log/MAD transform ead2 uses. The Pearson correlation term is gone, and <code>l3_min_score</code> now applies after normalisation, where an absolute floor on a 0–1 scale is meaningful.</p>
+<p>Two extra gates decide whether idlevel 4 claims a position at all, on top of whichever selection method is in force:</p>
+<ul>
+<li><code>l3_min_margin</code> (0.05) — the relative gap <code>(s₁ − s₂)/s₁</code> between the best two candidates, read on the <strong>raw</strong> scale, because normalisation pins the winner at 1.0 by construction.</li>
+<li><code>l3_min_matched</code> (3) — how many peaks the winner had to explain before that gap counts as evidence. A relative margin can look decisive when the whole comparison rests on one peak.</li>
+</ul>
+<p>Below either gate the chain is named at species level (<code>FA 20:4</code>, not <code>FA 20:4(5,8,11,14)</code>) and the alternatives stay in the confidence tail.</p>
+<table>
+<thead>
+<tr><th>Reference set</th><th>Top-1 before</th><th>Top-1 after</th><th>idlevel-4 positions asserted</th><th>of those, correct</th></tr>
+</thead>
+<tbody>
+<tr><td><code>ara-ead</code> (114 spectra)</td><td>28%</td><td><strong>80%</strong></td><td>84 / 114</td><td>98%</td></tr>
+<tr><td><code>light-ead</code> (163 spectra)</td><td>53%</td><td><strong>75%</strong></td><td>100 / 163</td><td>93%</td></tr>
+</tbody>
+</table>
+<p>Both gates were fitted against known positions carried in the reference spectra, not chosen by taste. The distance-weight array and its ×6 spike were kept: flattening either collapses accuracy to 11–20%, so the empirical claim the published method makes about EAD cleavage is load-bearing and correct — only its scoring was broken.</p>
+<p>ead1 does <strong>not</strong> support oxidised lipids at all. Oxidation parameters are ignored; chains with <code>;O</code> are filtered out entirely. Use ead2 for anything oxidised.</p>
+<h3>ead2: Exact formulas, oxidised</h3>
+<p>ead2 takes the opposite approach: it computes exact elemental-formula losses for every cleavage, and scores each predicted fragment independently against the closest peak in tolerance rather than matching one-to-one. It supports hydroxyl and ketone oxygens natively, and resolves oxygen <em>type</em> the same way it resolves position — by spectral match.</p>
 <p><strong>Oxygen chemistry.</strong> A <code>;O</code> suffix in a lipid name gives an oxygen <strong>count</strong>, not a chemistry. Since every hypothesis is anchored on a measured precursor, each candidate must be isobaric, so each oxygen group has to pay for itself:</p>
 <table>
 <thead>
@@ -110,8 +147,27 @@
 </table>
 <p>So <code>20:4;O</code> admits <code>20:4;OH</code> and <code>20:3;oxo</code>, but never <code>20:4;oxo</code>. An oxygenated carbon may not be sp2, so no double bond may land on or adjacent to it.</p>
 <p>Two consequences worth stating plainly: the supported oxygen space is deliberately limited to hydroxyl and ketone readings, and hydroperoxide or extra-carboxyl interpretations are <strong>not</strong> enumerated at all.</p>
-<p>v2 is <strong>experimental</strong>.</p>
+<p>Because the name only ever carries an oxygen count, ead2 must search both the all-hydroxyl and the ketone readings on every oxidised feature. On a mono-hydroxy reference set its top candidate lands on the wrong <em>oxygen type</em> in about 30% of spectra. That is the cost of not being told the chemistry up front, and it is inherent to the <code>;O</code> data model rather than a scoring defect.</p>
+<h2>Choosing which candidates are reported</h2>
+<p>This is the second substantive change in v1.0.173. Selection is set by <code>PARAM.l3_selection</code> and is orthogonal to the engine — either method works with either engine, including on oxidised lipids.</p>
+<table>
+<thead>
+<tr><th></th><th><code>posterior</code> (default)</th><th><code>legacy</code> (formerly <code>cutoff</code>)</th></tr>
+</thead>
+<tbody>
+<tr><td>Keeps</td><td>the smallest set of candidates holding <code>l3_post_credible_level</code> of the posterior mass</td><td>every candidate scoring within <code>l3_legacy_cutoff</code> of the top one</td></tr>
+<tr><td>Names a position at idlevel 4</td><td>when one placement carries at least <code>l3_post_min_mass</code></td><td>when the kept candidates happen to agree</td></tr>
+<tr><td>Set size means</td><td>how uncertain the spectrum is</td><td>nothing in particular</td></tr>
+<tr><td>Confidence tail reports</td><td>per-position marginal probabilities</td><td>vote counts over the kept set</td></tr>
+</tbody>
+</table>
+<p><strong>Why the change.</strong> <code>score_L3</code> is normalised against each spectrum's own best candidate, so the top hit always reads 1.0 whether the evidence is overwhelming or absent. There was no way for the output to say <em>this position is not determined</em>. Thresholding on the score <em>ratio</em> inherits that blindness: two near-ties and two hundred near-ties both pass, and the number of survivors says nothing about how well localised the answer is. Measured against a null of chemically impossible (allene) placements — structures the enumerator excludes precisely because they cannot occur — an impossible candidate landed within 1% of the best real one in <strong>11.4%</strong> of features. No value of the ratio cutoff separates real from impossible.</p>
+<p><code>posterior</code> instead converts the raw scores into a probability distribution with a softmax, then keeps the smallest set of top candidates whose probabilities sum to the credible level. The <strong>size of that set is the confidence statement</strong>: decisive evidence yields one candidate, an uninformative spectrum yields many. Positions are written into the idlevel-4 name only when a single placement carries at least <code>l3_post_min_mass</code>; otherwise the chain is reported at species level and the confidence tail still lists what is known.</p>
+<p>The temperature is fitted, not chosen: swept against known positions on two reference sets, 0.01 maximises discrimination while keeping calibration error low. Larger values flatten the posterior towards chance, smaller ones manufacture confidence. Score gaps are taken relative to the top score, so one temperature is meaningful for both engines even though their raw scores differ by orders of magnitude.</p>
+<p>The trade is coverage against correctness. Measured on a mono-hydroxy reference set with ead2, <code>legacy</code> asserts a C=C position on 84 of 96 features and is right on 55 (65%); <code>posterior</code> asserts 55 and is right on 40 (73%). <code>legacy</code> remains available for reproducing earlier results.</p>
 <h2>Configuration</h2>
+<p>Every idlevel-3/4 parameter is now prefixed <code>l3_</code>. The former <code>ead_*</code> and <code>include_ms1_monochain</code> spellings are still accepted, so existing configs load unchanged.</p>
+<h3>General</h3>
 <table>
 <thead>
 <tr>
@@ -122,55 +178,108 @@
 </thead>
 <tbody>
 <tr>
-<td><code>ead_max_unsaturated</code></td>
+<td><code>l3_max_unsaturated</code></td>
+<td><code>6</code></td>
+<td>Caps unsaturation accepted for exhaustive search (higher = more candidates, slower)</td>
+</tr>
+<tr>
+<td><code>l3_max_oxygen</code></td>
 <td><code>2</code></td>
-<td>Caps double bonds per chain (higher = more candidates, slower)</td>
+<td>Caps total oxygen positions across all chains (ead2 and uvpd; ead1 ignores it)</td>
 </tr>
 <tr>
-<td><code>ead_max_oxygen</code></td>
-<td><code>2</code></td>
-<td>Caps total oxygen atoms across all chains (v2 only)</td>
+<td><code>l3_max_candidates</code></td>
+<td><code>10000</code></td>
+<td>Candidates scored before stride-sampling. Raise to 30000 for oxidised work.</td>
 </tr>
 <tr>
-<td><code>ead_max_candidates</code></td>
-<td><code>30000</code></td>
-<td>Candidates scored before stride-sampling. Do not lower below ~22,300 for oxidised work.</td>
+<td><code>l3_max_output</code></td>
+<td><code>20</code></td>
+<td>Candidates written to <code>diag/annotation_idlevel3.csv</code> per feature</td>
 </tr>
 <tr>
-<td><code>ead_chain_cutoff</code></td>
-<td><code>0.95</code></td>
-<td>Keep candidates within this fraction of the best score</td>
-</tr>
-<tr>
-<td><code>ead_min_score</code></td>
+<td><code>l3_min_score</code></td>
 <td><code>0.2</code></td>
-<td>Absolute <code>score_L3</code> floor</td>
+<td>Absolute <code>score_L3</code> floor, applied after normalisation</td>
 </tr>
 <tr>
-<td><code>ead_chain_corr_weight</code></td>
-<td><code>0.5</code></td>
-<td>Weight of the correlation term (v1 only; unused by v2)</td>
+<td><code>l3_min_margin</code></td>
+<td><code>0.05</code></td>
+<td>Minimum relative gap between the best two candidates before idlevel 4 names a position (ead1)</td>
 </tr>
 <tr>
-<td><code>ead_intensity_scaling</code></td>
+<td><code>l3_min_matched</code></td>
+<td><code>3</code></td>
+<td>Minimum peaks the winner must have matched for that gap to count (ead1)</td>
+</tr>
+<tr>
+<td><code>l3_intensity_scaling</code></td>
 <td><code>none</code></td>
-<td>Compressive transform on matched intensity (v2 only): <code>none</code>, <code>sqrt</code>, <code>log10</code>, <code>ln</code>, <code>log2</code></td>
+<td>Compressive transform on matched intensity (ead2 only): <code>none</code>, <code>sqrt</code>, <code>log10</code>, <code>ln</code>, <code>log2</code>. ead1 always applies <code>sqrt</code> as part of its model.</td>
 </tr>
 <tr>
-<td><code>include_ms1_monochain</code></td>
-<td><code>true</code></td>
-<td>Admit idlevel 1 single-chain parents</td>
+<td><code>l3_include_ms1_monochain</code></td>
+<td><code>True</code></td>
+<td>Admit idlevel 1 single-chain parents such as LPC/LPE</td>
+</tr>
+<tr>
+<td><code>l3_null_decoys</code></td>
+<td><code>False</code></td>
+<td>Diagnostic: also score chemically impossible (allene) placements as a null. Never emitted as an annotation.</td>
 </tr>
 <tr>
 <td><code>db_n_notation</code></td>
-<td><code>false</code></td>
-<td>Report positions as <code>n-x</code> instead of Δ</td>
+<td><code>False</code></td>
+<td>Legacy switch: render positions in the confidence tail as <code>n-x</code>. Canonical Shorthand2020 names always use Δ.</td>
 </tr>
 </tbody>
 </table>
-<p><strong><code>ead_max_candidates</code> deserves particular care.</strong> A single oxidised token such as <code>20:4;O</code> enumerates roughly 22,300 candidates. If the cap sits below that, the true structure can be stride-sampled out of consideration <em>before scoring ever runs</em>. The failure is silent and looks identical to a scoring failure in the output. The default of 30,000 is set above the oxidised case deliberately: lower it only if you understand the space you are searching.</p>
+<h3>Candidate selection</h3>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Default</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>l3_selection</code></td>
+<td><code>posterior</code></td>
+<td><code>posterior</code> or <code>legacy</code> (accepted as <code>cutoff</code>)</td>
+</tr>
+<tr>
+<td><code>l3_post_credible_level</code></td>
+<td><code>0.95</code></td>
+<td>Posterior mass the reported credible set must reach</td>
+</tr>
+<tr>
+<td><code>l3_post_min_mass</code></td>
+<td><code>0.5</code></td>
+<td>Posterior mass a single placement needs before its positions enter the idlevel-4 name</td>
+</tr>
+<tr>
+<td><code>l3_post_temperature</code></td>
+<td><code>0.01</code></td>
+<td>Softmax temperature. Fitted against known positions — change it only with a re-fit.</td>
+</tr>
+<tr>
+<td><code>l3_legacy_cutoff</code></td>
+<td><code>0.99</code></td>
+<td>Relative score cutoff vs the top candidate, used only by <code>l3_selection: legacy</code></td>
+</tr>
+</tbody>
+</table>
+<p><strong><code>l3_max_candidates</code> deserves particular care.</strong> A single oxidised token such as <code>20:4;O</code> enumerates roughly 22,300 candidates. If the cap sits below that, the true structure can be stride-sampled out of consideration <em>before scoring ever runs</em>. The failure is silent and looks identical to a scoring failure in the output. The default of 10,000 suits non-oxidised chains; raise it to 30,000 for oxidised work.</p>
+<h2>How positions are reported</h2>
+<p>An idlevel-4 name carries a confidence tail listing each position and the support behind it, and the same numbers ride along in the CXSMILES trailer as <code>dbPos(...)</code> / <code>mPos(...)</code> tokens:</p>
+<pre><code>FA 20:4;OH [DB sn1: Δ5 100%, Δ8 100%, Δ12 100%, Δ14 50%, Δ15 50%; OH sn1: 11 100%]
+</code></pre>
+<p>Note where the hydroxyl position sits: in the tail, not in the name body. A group positioned mid-chain alongside unlocalised double bonds does not say how those bonds divide around it, so writing it into the body would make the name unrepresentable. See <a href="nomenclature.html">Nomenclature and CXSMILES</a> for the full encoding.</p>
 <h2>Diagnostics</h2>
-<p><code>diag/annotation_idlevel3.csv</code> lists the retained positional candidates and <code>diag/annotation_idlevel4.csv</code> the per-feature consensus. In the dashboard, the <strong>MS2 match</strong> tab shows the mirror plot for a selected candidate, and clicking a peak maps it onto the structure so you can see which cleavage supports a given position call.</p>
+<p><code>diag/annotation_idlevel3.csv</code> lists the retained positional candidates and <code>diag/annotation_idlevel4.csv</code> the per-feature consensus. <code>diag/l3_resolvability.csv</code> is new in v1.0.173: it carries the posterior over candidates, the per-position marginals, and the <code>margin</code> and <code>matched_n</code> columns behind the idlevel-4 gates. It reports only; it gates nothing.</p>
+<p>In the dashboard, the <strong>MS2 match</strong> tab shows the mirror plot for a selected candidate, and clicking a peak maps it onto the structure so you can see which cleavage supports a given position call.</p>
 </article>
     </div>
 </body>

@@ -148,8 +148,8 @@ PARAM:                          # Numeric and threshold parameters
 <tr>
 <td><code>acyl_analysis</code></td>
 <td>bool or string</td>
-<td><code>False</code>, <code>True</code>, <code>'v1'</code>, <code>'v2'</code></td>
-<td>Analyse acyl chain composition (requires EAD or UVPD spectra); produces idlevel 3 and 4 matches</td>
+<td><code>False</code>, <code>'ead1'</code>, <code>'ead2'</code>, <code>'uvpd'</code></td>
+<td>Localise C=C and oxygen positions along the acyl chains; produces idlevel 3 and 4 matches. <code>ead1</code> skips oxidised species; <code>ead2</code> is required for anything carrying <code>;O</code>. <code>True</code>/<code>'v1'</code>/<code>'v2'</code> are accepted aliases. See <a href="idlevel3.html">Acyl-chain analysis</a>.</td>
 </tr>
 <tr>
 <td><code>rt_check</code></td>
@@ -236,8 +236,8 @@ PARAM:                          # Numeric and threshold parameters
 </tr>
 </tbody>
 </table>
-<h3>EAD/UVPD Analysis</h3>
-<p>When <code>acyl_analysis</code> is enabled, these parameters control the exhaustive C=C and oxidation position search:</p>
+<h3>Acyl-chain analysis (idlevel 3 and 4)</h3>
+<p>When <code>acyl_analysis</code> is enabled, these parameters control the exhaustive C=C and oxidation position search. <strong>Since v1.0.173 every one of them is prefixed <code>l3_</code></strong>; the former <code>ead_*</code> and <code>include_ms1_monochain</code> spellings are still accepted as aliases, so existing configs load unchanged.</p>
 <table>
 <thead>
 <tr>
@@ -249,34 +249,114 @@ PARAM:                          # Numeric and threshold parameters
 </thead>
 <tbody>
 <tr>
-<td><code>ead_max_unsaturated</code></td>
+<td><code>l3_include_ms1_monochain</code></td>
+<td>bool</td>
+<td><code>True</code></td>
+<td>Also localise on idlevel 1 single-acyl species such as LPC/LPE</td>
+</tr>
+<tr>
+<td><code>l3_max_unsaturated</code></td>
+<td>int</td>
+<td><code>6</code></td>
+<td>Caps unsaturation accepted for exhaustive search (higher = more candidates, slower runtime)</td>
+</tr>
+<tr>
+<td><code>l3_max_oxygen</code></td>
 <td>int</td>
 <td><code>2</code></td>
-<td>Caps unsaturated chains per feature (higher = more candidates, slower runtime)</td>
+<td>Caps total oxygen positions across all chains. Used by <code>ead2</code>/<code>uvpd</code>; <code>ead1</code> has no oxygen support and ignores it.</td>
 </tr>
 <tr>
-<td><code>ead_max_oxygen</code></td>
+<td><code>l3_max_candidates</code></td>
 <td>int</td>
-<td><code>2</code></td>
-<td>Caps total oxygen atoms across all chains</td>
+<td><code>10000</code></td>
+<td>Candidates scored before stride-sampling. Raise to 30000 for oxidised work — a single <code>20:4;O</code> token enumerates ~22,300 candidates, and below that the true structure can be sampled out silently. See <a href="idlevel3.html">Acyl-chain analysis</a>.</td>
 </tr>
 <tr>
-<td><code>ead_max_candidates</code></td>
+<td><code>l3_max_output</code></td>
 <td>int</td>
-<td><code>30000</code></td>
-<td>Candidates scored before stride-sampling. Do not lower below ~22,300 for oxidised work, or true structures can be sampled out silently. See <a href="idlevel3.html">EAD</a>.</td>
+<td><code>20</code></td>
+<td>Candidates written to <code>diag/annotation_idlevel3.csv</code> per feature</td>
 </tr>
 <tr>
-<td><code>ead_chain_cutoff</code></td>
-<td>float</td>
-<td><code>0.95</code></td>
-<td>Relative score threshold: retain isomers scoring ≥ (max_score × cutoff)</td>
-</tr>
-<tr>
-<td><code>ead_min_score</code></td>
+<td><code>l3_min_score</code></td>
 <td>float</td>
 <td><code>0.2</code></td>
-<td>Absolute <code>score_L3</code> floor</td>
+<td>Absolute <code>score_L3</code> floor, applied after normalisation</td>
+</tr>
+<tr>
+<td><code>l3_min_margin</code></td>
+<td>float</td>
+<td><code>0.05</code></td>
+<td>Minimum relative gap between the two best candidates before idlevel 4 names a position (<code>ead1</code>). Fitted against known positions.</td>
+</tr>
+<tr>
+<td><code>l3_min_matched</code></td>
+<td>int</td>
+<td><code>3</code></td>
+<td>Minimum peaks the winning candidate must have matched for that gap to count (<code>ead1</code>)</td>
+</tr>
+<tr>
+<td><code>l3_intensity_scaling</code></td>
+<td>string</td>
+<td><code>'none'</code></td>
+<td>Compressive transform on matched intensity (<code>ead2</code> only): <code>none</code>, <code>sqrt</code>, <code>log10</code>, <code>ln</code>, <code>log2</code>. <code>ead1</code> always applies <code>sqrt</code> as part of its scoring model.</td>
+</tr>
+<tr>
+<td><code>db_n_notation</code></td>
+<td>bool</td>
+<td><code>False</code></td>
+<td>Legacy switch: render double-bond positions in the idlevel-4 confidence tail as <code>n-x</code>. Canonical Shorthand2020 names always use Δ.</td>
+</tr>
+<tr>
+<td><code>l3_null_decoys</code></td>
+<td>bool</td>
+<td><code>False</code></td>
+<td>Diagnostic only: also score chemically impossible (allene) placements as a null, adding a column to <code>diag/l3_resolvability.csv</code>. Never emitted as an annotation.</td>
+</tr>
+</tbody>
+</table>
+<h3>Candidate selection (new in v1.0.173)</h3>
+<p>Which positional isomers get reported, and how confidently idlevel 4 is named. Orthogonal to <code>acyl_analysis</code>: either method works with any engine.</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>l3_selection</code></td>
+<td>string</td>
+<td><code>'posterior'</code></td>
+<td><code>posterior</code> converts scores to a probability distribution over candidates and reports the smallest set holding the credible level. <code>legacy</code> (accepted as <code>cutoff</code>) is the original relative-score threshold. <code>legacy</code> names more features but is right less often.</td>
+</tr>
+<tr>
+<td><code>l3_post_credible_level</code></td>
+<td>float</td>
+<td><code>0.95</code></td>
+<td>Posterior mass the reported credible set must reach</td>
+</tr>
+<tr>
+<td><code>l3_post_min_mass</code></td>
+<td>float</td>
+<td><code>0.5</code></td>
+<td>Posterior mass one placement needs before its positions are written into the idlevel-4 name. Below it the chain is reported at species level and the confidence tail still lists what is known.</td>
+</tr>
+<tr>
+<td><code>l3_post_temperature</code></td>
+<td>float</td>
+<td><code>0.01</code></td>
+<td>Softmax temperature turning score gaps into probabilities. Fitted against known positions, not chosen — larger flattens the posterior towards chance, smaller manufactures confidence.</td>
+</tr>
+<tr>
+<td><code>l3_legacy_cutoff</code></td>
+<td>float</td>
+<td><code>0.99</code></td>
+<td>Relative score cutoff vs the top candidate. Used only when <code>l3_selection: legacy</code>, and weakly discriminating: against an impossible-position null, absurd structures cleared this setting for ~11% of features.</td>
 </tr>
 </tbody>
 </table>
@@ -301,19 +381,23 @@ PARAM:
   ms2_noise_abs: 10
   ms1_maxO: 0
   ms2_maxO: 0
-  ead_max_unsaturated: 2
-  ead_max_oxygen: 2
-  ead_max_candidates: 30000
-  ead_chain_cutoff: 0.95
-  ead_min_score: 0.2
+  l3_max_unsaturated: 6
+  l3_max_oxygen: 2
+  l3_max_candidates: 10000
+  l3_min_score: 0.2
+  l3_selection: 'posterior'
+  l3_post_credible_level: 0.95
+  l3_post_min_mass: 0.5
   # ... (other parameters with defaults)
 </code></pre>
 <h3>When to customise</h3>
 <ul>
 <li><strong>Looser matching</strong> (more candidates): lower <code>rarity_max</code>, increase <code>ms1_tolerance</code></li>
-<li><strong>Stricter matching</strong> (fewer false positives): raise <code>rarity_max</code>, decrease <code>ms1_tolerance</code>, tighten <code>ead_chain_cutoff</code></li>
-<li><strong>Faster runs</strong> (skip acyl analysis): keep <code>acyl_analysis: False</code> or lower <code>ead_max_candidates</code></li>
-<li><strong>Oxidised lipids</strong>: raise <code>ms1_maxO</code> and <code>ms2_maxO</code> (default 0 means no oxidation variants)</li>
+<li><strong>Stricter matching</strong> (fewer false positives): raise <code>rarity_max</code>, decrease <code>ms1_tolerance</code></li>
+<li><strong>Faster runs</strong> (skip acyl analysis): keep <code>acyl_analysis: False</code> or lower <code>l3_max_candidates</code></li>
+<li><strong>Oxidised lipids</strong>: raise <code>ms1_maxO</code> and <code>ms2_maxO</code> (default 0 means no oxidation variants), pick <code>acyl_analysis: ead2</code>, and raise <code>l3_max_candidates</code> to 30000</li>
+<li><strong>More positional calls, accepting more wrong ones</strong>: set <code>l3_selection: legacy</code>. This also reproduces pre-1.0.173 behaviour.</li>
+<li><strong>Fewer but better positional calls</strong>: keep the default <code>posterior</code> and raise <code>l3_post_min_mass</code></li>
 <li><strong>Targeted RT validation</strong>: choose <code>rt_check: legacy</code> for the original two-regression model, or <code>rt_check: False</code> to skip RT filtering entirely</li>
 </ul>
 </article>

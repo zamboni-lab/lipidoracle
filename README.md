@@ -8,6 +8,10 @@ retention-time validation, and C=C / oxidation localisation from EAD or UVPD dat
 This repository holds the documentation site and the test data. The engine ships
 as a Docker image.
 
+**Latest release: v1.0.173** — Shorthand 2020 nomenclature throughout, fixed
+CXSMILES support, and posterior thresholding for candidate retention. See
+[WHATSNEW.md](WHATSNEW.md).
+
 Using an AI coding agent? See [AGENTS.md](AGENTS.md) — the repository carries a
 LipidOracle skill that teaches agents the full Docker workflow, the parameter
 file, and how to read the outputs.
@@ -29,7 +33,7 @@ docker run --rm \
 
 If no `lipidoracle.yaml` is found in either input or output folder, LipidOracle writes a default one to the output folder and stops, so you
 can review it before the real run. The defaults use the internal library and the LiRI retention-time check. See
-[Parameters](https://zamboni-lab.github.io/lipidoracle/PARAMETERS.html) for the
+[Parameters](https://zamboni-lab.github.io/lipidoracle/params.html) for the
 full reference.
 
 ## Test data
@@ -39,7 +43,7 @@ Two ready-to-run datasets in `testdata/`:
 | Folder | Spectra | Size | Notes |
 | --- | ---: | ---: | --- |
 | `cid/` | 9,948 | 32 MB | CID run, annotation to idlevel 1–2. Completes in seconds. |
-| `ead/` | 38,255 | 12 MB | EAD run. Set `acyl_analysis: v1` to localise C=C. |
+| `ead/` | 38,255 | 12 MB | EAD run. Set `acyl_analysis: ead1` to localise C=C. |
 
 ## License
 

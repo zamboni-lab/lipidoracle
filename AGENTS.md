@@ -53,5 +53,9 @@ same command again to get `annotation.csv`, `summary.csv`, `dashboard.html`, and
 ## Repository conventions
 
 - `docs/` is the published GitHub Pages site (plain HTML, no build step).
+- [WHATSNEW.md](WHATSNEW.md) records what changed in the current release. Read it
+  before answering questions about parameter names or `score_L3` semantics —
+  v1.0.173 renamed every `ead_*` parameter to `l3_*` and changed how positional
+  candidates are retained.
 - `testdata/cid/` and `testdata/ead/` are ready-to-run example datasets.
 - Licensed PolyForm Noncommercial 1.0.0. Non-commercial use only.
