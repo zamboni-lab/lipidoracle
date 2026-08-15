@@ -119,6 +119,7 @@
 
 <h2>2. Encoding ambiguity in CXSMILES</h2>
 <p>MS2 spectra frequently fail to determine a structure completely. Rather than picking one candidate arbitrarily, LipidOracle writes what was measured and marks what was not. Each kind of missing knowledge gets its own construct: where the CXSMILES standard has one, it is used as-is; where it has none, LipidOracle adds a token <em>after</em> the closing <code>|</code>, in the SMILES title field.</p>
+<p><strong><code>constrain(...)</code>, <code>swappable(...)</code>, <code>dbPos(...)</code>, and <code>mPos(...)</code> are non-standard extensions introduced by LipidOracle</strong> to describe properties that are not supported by the SMILES or CXSMILES standards.</p>
 <div class="table-scroll">
 <table>
 <thead>
@@ -139,13 +140,7 @@
 <p>The two "…and" rows are the pattern in miniature: CXSMILES can mark a variable run but not say how long it is, and can label an atom but not say the labels may trade places. The structural half goes inside the <code>|...|</code> block, correct and complete; the half the standard cannot express goes after it.</p>
 <p><strong>A fully determined structure has no <code>|...|</code> tail at all.</strong> The presence of a tail is itself a signal that something was left open.</p>
 
-<h3>Geometry undetermined → nothing to add</h3>
-<p>A double bond in SMILES has three states: cis, trans, or unspecified — and unspecified is what a plain <code>C=C</code> already means.</p>
-<pre><code>FA 18:1(9)   (position known, geometry not determined)
-↓
-OC(=O)CCCCCCCC=CCCCCCCCC</code></pre>
-
-<h3>sn-position undetermined → <code>$snN$</code> labels</h3>
+<h3>sn-position undetermined → <code>sn*</code> labels</h3>
 <p>When chains are separated by <code>_</code>, the molecule is written out <strong>completely</strong>, with one representative assignment, and two annotations say the assignment is a choice rather than a measurement.</p>
 <pre><code>PC 16:0_18:1(9)
 ↓
