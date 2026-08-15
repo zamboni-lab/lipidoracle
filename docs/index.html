@@ -453,48 +453,6 @@ pre .c { color: var(--code-comment); }
   }
 }
 
-/* ---- pipeline stages: three equal cells ----------------------- */
-
-/* Stages are steps, levels are results, so the two blocks are built to
-   look unrelated: stages take a neutral surface with an accent edge and a
-   small ordinal, levels keep the saturated per-level fills below. */
-.stages {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
-}
-.stage-card {
-  border-radius: var(--radius);
-  padding: 22px 22px 24px;
-  background: var(--panel-2);
-  border: var(--rule);
-  border-left: 3px solid var(--accent);
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-width: 0;
-}
-.stage-num {
-  font-family: var(--font-mono);
-  font-size: 1.05rem;
-  font-weight: 600;
-  letter-spacing: .1em;
-  text-transform: uppercase;
-  color: var(--accent-text);
-}
-.stage-card h3 { margin: 0; font-size: 1.05rem; }
-.stage-card p { margin: 0; color: var(--text-2); font-size: .94rem; }
-.stage-reach {
-  margin-top: 2px;
-  padding-top: 10px;
-  border-top: var(--rule);
-  font-size: .86rem;
-  color: var(--muted);
-}
-.block-title { margin: 42px 0 6px; font-size: 1.2rem; }
-.block-lede { margin: 0 0 20px; color: var(--text-2); max-width: var(--measure); }
-@media (max-width: 860px) { .stages { grid-template-columns: 1fr; } }
-
 /* ---- id levels: asymmetric four-cell grid --------------------- */
 
 .levels {
@@ -858,7 +816,7 @@ footer p { margin: 0; }
     <a class="wordmark" href="#top"><img src="data:image/png;base64,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" alt="">LipidOracle</a>
     <nav class="nav-links">
       <a href="#install">Install</a>
-      <a href="#workflow">Workflow</a>
+      <a href="#workflow">Stages</a>
       <a href="#levels" data-secondary>Traceable evidence</a>
       <a href="#rt-check" data-secondary>RT check</a>
       <a href="#rt" data-secondary>FAIR reporting</a>
@@ -955,10 +913,15 @@ footer p { margin: 0; }
   <section id="workflow">
     <div class="wrap">
       <div class="sec-head">
-        <h2>What happens on a run</h2>
+        <h2>Analysis stages</h2>
         <p>
-          Each stage narrows the candidate set and raises the identification level
-          of the matches it produces. <strong>A typical workflow concludes in less than 10 sec for CID data, and less than 5 min for EAD data.</strong>
+          A run is a fixed sequence of steps. Three of them are the numbered
+          <strong>analysis stages</strong>, and each reports the identification
+          level its evidence supports &mdash; falling back to the level below
+          when the spectrum cannot separate the isomers, rather than asserting a
+          structure the data does not carry. The remaining steps prepare the
+          input and filter or export what the stages produced.
+          <strong>A typical run concludes in less than 10 sec for CID data, and less than 5 min for EAD data.</strong>
         </p>
       </div>
 
@@ -975,12 +938,12 @@ footer p { margin: 0; }
         </div>
         <div class="pipe-row">
           <h3>Match on accurate mass</h3>
-          <p>Identifies features by precursor m/z against every library in play.</p>
+          <p>Identifies features by precursor m/z against every library in play. Internal standards are matched here too. Reports idlevel 1.</p>
           <span class="lvl-chip" data-lvl="1">stage 1</span>
         </div>
         <div class="pipe-row">
           <h3>Match on MS2</h3>
-          <p>Every stage-1 hit that carries MS2 goes on to fragment matching and scoring. Reaches idlevel 2, or stays at idlevel 1 where the chains do not resolve.</p>
+          <p>Every stage-1 hit that carries MS2 goes on to fragment matching and scoring. Reports idlevel 2, or idlevel 1 where the chains do not resolve.</p>
           <span class="lvl-chip" data-lvl="2">stage 2</span>
         </div>
         <div class="pipe-row">
@@ -990,13 +953,13 @@ footer p { margin: 0; }
         </div>
         <div class="pipe-row">
           <h3>Resolve acyl chains</h3>
-          <p>On EAD or UVPD spectra, locates C=C and oxidation positions by scoring simulated isomer spectra. Reaches idlevel 3, or stays at idlevel 2 where the isomers do not resolve.</p>
+          <p>On EAD or UVPD spectra, locates C=C and oxidation positions by scoring simulated isomer spectra. Reports idlevel 3, and idlevel 4 once consolidated, or idlevel 2 where the isomers do not resolve.</p>
           <span class="lvl-chip" data-lvl="3">stage 3</span>
         </div>
         <div class="pipe-row">
           <h3>Consolidate and export</h3>
           <p>Aggregates the stage-3 candidates per spectrum into the idlevel-4 consensus form, then writes results, diagnostics, and the dashboard.</p>
-          <span class="lvl-chip" data-lvl="4">idlevel 4</span>
+          <span class="lvl-chip" data-lvl="0">output</span>
         </div>
       </div>
     </div>
@@ -1007,50 +970,13 @@ footer p { margin: 0; }
       <div class="sec-head">
         <h2>Traceable evidence</h2>
         <p>
-          LipidOracle keeps track of what fragments were used to identify which molecular properties. Every annotation carries two numbers, and they answer different questions: <code>stage</code> is <em>which step produced this row</em>, <code>idlevel</code> is <em>how much detail that answer carries</em>.
+          LipidOracle keeps track of what fragments were used to identify which molecular properties. Every annotation carries two numbers: <code>stage</code> (1&ndash;3) is the step that produced it, and <code>idlevel</code> (1&ndash;4) is how detailed the resulting identification is, with increasing granularity. They need not agree &mdash; a stage reports the level below when the spectrum cannot separate the isomers. Each level has its own confidence score.</p> 
+          <p>For each compounds and <code>idlevel</code>, <strong>Lipidoracle enumerates and scores all isomers, and produces a consolidated output rooted in the information that was found.</strong>
         </p>
         <p>
-          For each compound, <strong>LipidOracle enumerates and scores all isomers, and produces a consolidated output rooted in the information that was found.</strong> The basis of the hierarchical annotation is provided by the <a href="library.html">built-in library</a>.
+          The basis of the hierarchical annotation is provided by the <a href="library.html">built-in library</a>.
         </p>
       </div>
-
-      <h3 class="block-title">Three stages</h3>
-      <p class="block-lede">
-        A stage is a step in the run. Stages execute in order, each one taking
-        the rows the previous stage produced. A stage does not always reach its
-        best level: when the spectrum cannot separate the isomers, it falls back
-        and reports the level below rather than asserting a structure the data
-        does not support.
-      </p>
-
-      <div class="stages">
-        <div class="stage-card">
-          <span class="stage-num">Stage 1</span>
-          <h3>MS1 accurate mass</h3>
-          <p>Matches precursor masses against every library in play. Internal standards are matched here too.</p>
-          <p class="stage-reach">Reports idlevel 1.</p>
-        </div>
-        <div class="stage-card">
-          <span class="stage-num">Stage 2</span>
-          <h3>MS2 fragments</h3>
-          <p>Scores predicted and library fragment spectra against every stage-1 hit that carries MS2.</p>
-          <p class="stage-reach">Reports idlevel 2, or idlevel 1 where the chains do not resolve.</p>
-        </div>
-        <div class="stage-card">
-          <span class="stage-num">Stage 3</span>
-          <h3>Acyl-chain positions</h3>
-          <p>On EAD, UVPD or OAD spectra, places C=C and oxygen positions along the chains by scoring simulated isomer spectra.</p>
-          <p class="stage-reach">Reports idlevel 3 and 4, or stays at idlevel 2 where nothing resolves.</p>
-        </div>
-      </div>
-
-      <h3 class="block-title">Four ID levels</h3>
-      <p class="block-lede">
-        An ID level describes the detail of the result, not the step that
-        reached it. Each level has its own confidence score. So idlevel 4 is not
-        a fourth stage: every idlevel-3 and idlevel-4 row is produced by
-        stage 3.
-      </p>
 
       <div class="levels">
         <div class="level level-1">
