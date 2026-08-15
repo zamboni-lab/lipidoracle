@@ -971,7 +971,7 @@ footer p { margin: 0; }
         <h2>Traceable evidence</h2>
         <p>
           Every annotation carries two numbers: <code>stage</code> (1&ndash;3) is the step that produced it, and <code>idlevel</code> (1&ndash;4) describes the detail of the resulting identification.</p>
-          <p>For each compounds and <code>idlevel</code>, LipidOracle keeps track of what fragments were used to identify which molecular properties.</p>
+          <p>For each feature and <code>idlevel</code>, LipidOracle keeps track of what fragments were used to identify which molecular properties.</p>
         <p>Different from most other lipidomics software relies on matching of expected fragments, <strong>Lipidoracle checks also for specificity</strong>. At Stage 2 and 3, LipidOracle enumerates and scores all possible isomers. It checks whether the MS2 spectrum can indeed resolve the isomers, and if not, it reports the lower <code>idlevel</code> that is supported by the data. This analysis is takes into account the specificity of the MS2 fragments, and ensures that details on acyl chains length, positions, and modification are reported only when discriminatng fragments were detected.
         </p>
         <p>
