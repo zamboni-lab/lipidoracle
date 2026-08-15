@@ -80,16 +80,7 @@
 <h1>Nomenclature and CXSMILES</h1>
 <p>LipidOracle emits <strong>Shorthand2020</strong> names — the notation defined by Liebisch et al. — as the canonical value of the <code>name</code> column, and <strong>extended CXSMILES</strong> as the canonical structure. Where the evidence does not determine a structure, the notation says so explicitly rather than guessing.</p>
 
-<div class="callout">
-  <p><strong>New in v1.0.173.</strong> Nomenclature and structure output were both reworked:</p>
-  <ul>
-    <li><strong>Shorthand2020 throughout.</strong> Positional modifiers are written <code>;11OH</code> and <code>;5oxo</code>, not the legacy <code>;OH(11)</code> / <code>;oxo(5)</code>. Legacy spellings are normalised at every input boundary, so older libraries and configs still load.</li>
-    <li><strong>CXSMILES fixed.</strong> The <code>ctu:</code> and <code>RG:</code> constructs are gone; sn-ambiguity is now carried by <code>$snN$</code> atom labels on a complete molecule. Output is validated against CDK.</li>
-    <li><strong>Localisation confidence is encoded</strong>, in the name as a bracketed tail and in the CXSMILES trailer as <code>dbPos(...)</code> / <code>mPos(...)</code>.</li>
-  </ul>
-</div>
-
-<h2>1. Shorthand2020 conventions</h2>
+<h2>1. Shorthand 2020 conventions</h2>
 
 <h3>Chain notation: <code>C:DB(positions)</code></h3>
 <p>Each acyl or sphingoid chain is written as carbon count, double-bond count, and optionally the explicit double-bond positions in Δ-numbering from the carboxyl carbon.</p>
@@ -153,7 +144,6 @@
 <pre><code>FA 18:1(9)   (position known, geometry not determined)
 ↓
 OC(=O)CCCCCCCC=CCCCCCCCC</code></pre>
-<p>Earlier versions emitted a <code>ctu:</code> block here. <strong>That was a mistake, and it has been removed.</strong> <code>ctu:</code> is a ChemAxon <em>query</em> feature meaning "match either configuration", intended for substructure search; most toolkits treat a bare <code>C=C</code> that way regardless. Emitting it turned every partially determined structure into a query without adding any information.</p>
 
 <h3>sn-position undetermined → <code>$snN$</code> labels</h3>
 <p>When chains are separated by <code>_</code>, the molecule is written out <strong>completely</strong>, with one representative assignment, and two annotations say the assignment is a choice rather than a measurement.</p>
