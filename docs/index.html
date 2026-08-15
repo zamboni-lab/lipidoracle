@@ -970,8 +970,9 @@ footer p { margin: 0; }
       <div class="sec-head">
         <h2>Traceable evidence</h2>
         <p>
-          LipidOracle keeps track of what fragments were used to identify which molecular properties. Every annotation carries two numbers: <code>stage</code> (1&ndash;3) is the step that produced it, and <code>idlevel</code> (1&ndash;4) is how detailed the resulting identification is, with increasing granularity. They need not agree &mdash; a stage reports the level below when the spectrum cannot separate the isomers. Each level has its own confidence score.</p> 
-          <p>For each compounds and <code>idlevel</code>, <strong>Lipidoracle enumerates and scores all isomers, and produces a consolidated output rooted in the information that was found.</strong>
+          Every annotation carries two numbers: <code>stage</code> (1&ndash;3) is the step that produced it, and <code>idlevel</code> (1&ndash;4) describes the detail of the resulting identification. They need not agree &mdash; in particular, every <code>idlevel 3</code> and <code>idlevel 4</code> row carries <code>stage = 3</code>.</p>
+          <p>For each compounds and <code>idlevel</code>, LipidOracle keeps track of what fragments were used to identify which molecular properties.</p>
+        <p>Different from most other lipidomics software relies on matching of expected fragments, <strong>Lipidoracle checks also for specificity</strong>. At Stage 2 and 3, LipidOracle enumerates and scores all possible isomers. It checks whether the MS2 spectrum can indeed resolve the isomers, and if not, it reports the lower <code>idlevel</code> that is supported by the data. This analysis is takes into account the specificity of the MS2 fragments, and ensures that details on acyl chains length, positions, and modification are reported only when discriminatng fragments were detected.
         </p>
         <p>
           The basis of the hierarchical annotation is provided by the <a href="library.html">built-in library</a>.
@@ -981,32 +982,23 @@ footer p { margin: 0; }
       <div class="levels">
         <div class="level level-1">
           <span class="level-num">IDLEVEL 1</span>
-          <h3>Accurate mass</h3>
-          <p>Matched on m/z alone. This happens when no MS2 is available. The detail doesn't go beyong lipid short names with total carbon and double bond numbers.</p>
+          <h3>Species</h3>
+          <p>Summed composition only, with no chain detail, for example <code>PC 34:1</code>.</p>
         </div>
         <div class="level level-2">
           <span class="level-num">IDLEVEL 2</span>
-          <h3>MS2 match</h3>
-          <p>
-            Ranked by <code>score_s2</code>, a hybrid of how well the weighted library
-            spectrum was matched and how well the spectra correlate. It allows to confirm lipid class and possibly identify acyl chains and - rarely - regiosiomerism
-          </p>
+          <h3>Molecular species</h3>
+          <p>Chain composition, including regiochemistry where the spectrum supports it, for example <code>PC 16:0_18:1</code> or <code>PC 16:0/18:1;OH</code>.</p>
         </div>
         <div class="level level-3">
           <span class="level-num">IDLEVEL 3</span>
-          <h3>Double-bond position in acyl chains</h3>
-          <p>
-            With EAD or UVPD spectra, it's possible to analyse the feature for C=C and oxidation position in its acyl chains.
-            <code>score_s3</code> compares simulated isomer spectra, with separate scoring
-            for lipids and for oxidised PUFAs. The complexity increases with multiple chains.
-            Since v1.0.173 both engines are intensity-aware, which lifted top-1 positional accuracy from 28% to 80% on the reference set.
-          </p>
+          <h3>Positional candidates</h3>
+          <p>Positional detail within the chains, including C=C, hydroxyl, and other modification positions. All plausible candidates are listed as separate rows.</p>
         </div>
         <div class="level level-4">
           <span class="level-num">IDLEVEL 4</span>
-          <h3>Consolidation of isomers</h3>
-          <p>One row per spectrum, aggregating all <code>idlevel 3</code> candidates into a single expression that captures consensus across thousands of candidates.
-            Candidates are retained by <strong>posterior mass</strong>, not by a score ratio, so the size of the reported set is itself the confidence statement — and a position that was never determined is now reported as undetermined rather than asserted.</p>
+          <h3>Aggregated positional evidence</h3>
+          <p>All <code>idlevel 3</code> candidates are condensed into one string, with a support score for each C=C or other modification position on every enriched chain. Depending on candidate selection, the scores are consensus support or posterior probabilities over the <code>idlevel 3</code> candidates.</p>
         </div>
 
       <figure>
@@ -1259,8 +1251,6 @@ footer p { margin: 0; }
     <p><a href="https://github.com/zamboni-lab/lipidoracle">GitHub</a></p>
   </div>
 </footer>
-
-
 
 
 

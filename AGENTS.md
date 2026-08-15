@@ -77,10 +77,4 @@ an agent misrepresents a LipidOracle run.
 - `docs/` is the published GitHub Pages site (plain HTML, no build step).
   `nomenclature.html` and `idlevel3.html` are the authoritative pages for naming
   and for acyl-chain localisation respectively.
-- [WHATSNEW.md](WHATSNEW.md) records what changed in the current release. Read it
-  before answering questions about parameter names, name formatting, CXSMILES
-  content, or `score_L3` semantics — v1.0.173 changed all four. In particular,
-  every `ead_*` parameter was renamed `l3_*`; the old spellings still load, so
-  **do not "fix" an existing config that uses them.**
-- `testdata/cid/` and `testdata/ead/` are ready-to-run example datasets.
 - Licensed PolyForm Noncommercial 1.0.0. Non-commercial use only.
