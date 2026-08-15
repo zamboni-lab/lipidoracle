@@ -453,6 +453,48 @@ pre .c { color: var(--code-comment); }
   }
 }
 
+/* ---- pipeline stages: three equal cells ----------------------- */
+
+/* Stages are steps, levels are results, so the two blocks are built to
+   look unrelated: stages take a neutral surface with an accent edge and a
+   small ordinal, levels keep the saturated per-level fills below. */
+.stages {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+.stage-card {
+  border-radius: var(--radius);
+  padding: 22px 22px 24px;
+  background: var(--panel-2);
+  border: var(--rule);
+  border-left: 3px solid var(--accent);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+.stage-num {
+  font-family: var(--font-mono);
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--accent-text);
+}
+.stage-card h3 { margin: 0; font-size: 1.05rem; }
+.stage-card p { margin: 0; color: var(--text-2); font-size: .94rem; }
+.stage-reach {
+  margin-top: 2px;
+  padding-top: 10px;
+  border-top: var(--rule);
+  font-size: .86rem;
+  color: var(--muted);
+}
+.block-title { margin: 42px 0 6px; font-size: 1.2rem; }
+.block-lede { margin: 0 0 20px; color: var(--text-2); max-width: var(--measure); }
+@media (max-width: 860px) { .stages { grid-template-columns: 1fr; } }
+
 /* ---- id levels: asymmetric four-cell grid --------------------- */
 
 .levels {
@@ -902,7 +944,7 @@ footer p { margin: 0; }
             <strong>Review the parameters, then run again.</strong> Or simply trust the defaults, which use the internal LipidOracle library and a permissive RT checking routine (LiRI).</p>
               <pre><code>WORKFLOW:
   lipidoracle: True       <span class="c"># internal MS1/MS2 annotation engine</span>
-  acyl_analysis: False    <span class="c"># No EAD/UVPD analysis of acyl chains</span>
+  stage3: False    <span class="c"># No EAD/UVPD analysis of acyl chains</span>
   rt_check: liri          <span class="c"># False | legacy | liri | hydra</span></code></pre>
           </div>
         </div>
@@ -934,12 +976,12 @@ footer p { margin: 0; }
         <div class="pipe-row">
           <h3>Match on accurate mass</h3>
           <p>Identifies features by precursor m/z against every library in play.</p>
-          <span class="lvl-chip" data-lvl="1">idlevel 1</span>
+          <span class="lvl-chip" data-lvl="1">stage 1</span>
         </div>
         <div class="pipe-row">
           <h3>Match on MS2</h3>
-          <p>Every idlevel 1 hit that carries MS2 goes on to fragment matching and scoring.</p>
-          <span class="lvl-chip" data-lvl="2">idlevel 2</span>
+          <p>Every stage-1 hit that carries MS2 goes on to fragment matching and scoring. Reaches idlevel 2, or stays at idlevel 1 where the chains do not resolve.</p>
+          <span class="lvl-chip" data-lvl="2">stage 2</span>
         </div>
         <div class="pipe-row">
           <h3>Validate retention time</h3>
@@ -948,12 +990,12 @@ footer p { margin: 0; }
         </div>
         <div class="pipe-row">
           <h3>Resolve acyl chains</h3>
-          <p>On EAD or UVPD spectra, locates C=C and oxidation positions by scoring simulated isomer spectra.</p>
-          <span class="lvl-chip" data-lvl="3">idlevel 3</span>
+          <p>On EAD or UVPD spectra, locates C=C and oxidation positions by scoring simulated isomer spectra. Reaches idlevel 3, or stays at idlevel 2 where the isomers do not resolve.</p>
+          <span class="lvl-chip" data-lvl="3">stage 3</span>
         </div>
         <div class="pipe-row">
           <h3>Consolidate and export</h3>
-          <p>Aggregates isomer candidates per spectrum, then writes results, diagnostics, and the dashboard.</p>
+          <p>Aggregates the stage-3 candidates per spectrum into the idlevel-4 consensus form, then writes results, diagnostics, and the dashboard.</p>
           <span class="lvl-chip" data-lvl="4">idlevel 4</span>
         </div>
       </div>
@@ -965,13 +1007,50 @@ footer p { margin: 0; }
       <div class="sec-head">
         <h2>Traceable evidence</h2>
         <p>
-          LipidOracle keeps track of what fragments were used to identify which molecular properties. The type of evidence is expressed in <code>idlevel</code> fields ranging from 1 to 4 with increasing granularity. Each level has its own confidence score.</p> 
-          <p>For each compounds and <code>idlevel</code>, <strong>Lipidoracle enumerates and scores all isomers, and produces a consolidated output rooted in the information that was found.</strong>
+          LipidOracle keeps track of what fragments were used to identify which molecular properties. Every annotation carries two numbers, and they answer different questions: <code>stage</code> is <em>which step produced this row</em>, <code>idlevel</code> is <em>how much detail that answer carries</em>.
         </p>
         <p>
-          The basis of the hierarchical annotation is provided by the <a href="library.html">built-in library</a>.
+          For each compound, <strong>LipidOracle enumerates and scores all isomers, and produces a consolidated output rooted in the information that was found.</strong> The basis of the hierarchical annotation is provided by the <a href="library.html">built-in library</a>.
         </p>
       </div>
+
+      <h3 class="block-title">Three stages</h3>
+      <p class="block-lede">
+        A stage is a step in the run. Stages execute in order, each one taking
+        the rows the previous stage produced. A stage does not always reach its
+        best level: when the spectrum cannot separate the isomers, it falls back
+        and reports the level below rather than asserting a structure the data
+        does not support.
+      </p>
+
+      <div class="stages">
+        <div class="stage-card">
+          <span class="stage-num">Stage 1</span>
+          <h3>MS1 accurate mass</h3>
+          <p>Matches precursor masses against every library in play. Internal standards are matched here too.</p>
+          <p class="stage-reach">Reports idlevel 1.</p>
+        </div>
+        <div class="stage-card">
+          <span class="stage-num">Stage 2</span>
+          <h3>MS2 fragments</h3>
+          <p>Scores predicted and library fragment spectra against every stage-1 hit that carries MS2.</p>
+          <p class="stage-reach">Reports idlevel 2, or idlevel 1 where the chains do not resolve.</p>
+        </div>
+        <div class="stage-card">
+          <span class="stage-num">Stage 3</span>
+          <h3>Acyl-chain positions</h3>
+          <p>On EAD, UVPD or OAD spectra, places C=C and oxygen positions along the chains by scoring simulated isomer spectra.</p>
+          <p class="stage-reach">Reports idlevel 3 and 4, or stays at idlevel 2 where nothing resolves.</p>
+        </div>
+      </div>
+
+      <h3 class="block-title">Four ID levels</h3>
+      <p class="block-lede">
+        An ID level describes the detail of the result, not the step that
+        reached it. Each level has its own confidence score. So idlevel 4 is not
+        a fourth stage: every idlevel-3 and idlevel-4 row is produced by
+        stage 3.
+      </p>
 
       <div class="levels">
         <div class="level level-1">
@@ -983,7 +1062,7 @@ footer p { margin: 0; }
           <span class="level-num">IDLEVEL 2</span>
           <h3>MS2 match</h3>
           <p>
-            Ranked by <code>score_L2</code>, a hybrid of how well the weighted library
+            Ranked by <code>score_s2</code>, a hybrid of how well the weighted library
             spectrum was matched and how well the spectra correlate. It allows to confirm lipid class and possibly identify acyl chains and - rarely - regiosiomerism
           </p>
         </div>
@@ -992,7 +1071,7 @@ footer p { margin: 0; }
           <h3>Double-bond position in acyl chains</h3>
           <p>
             With EAD or UVPD spectra, it's possible to analyse the feature for C=C and oxidation position in its acyl chains.
-            <code>score_L3</code> compares simulated isomer spectra, with separate scoring
+            <code>score_s3</code> compares simulated isomer spectra, with separate scoring
             for lipids and for oxidised PUFAs. The complexity increases with multiple chains.
             Since v1.0.173 both engines are intensity-aware, which lifted top-1 positional accuracy from 28% to 80% on the reference set.
           </p>
@@ -1152,8 +1231,9 @@ footer p { margin: 0; }
             <li>annotation_full.csv</li>
             <li>summary_by_feature.csv</li>
             <li>input_spectra.csv</li>
-            <li>annotation_idlevel*.csv</li>
-            <li>lib_idlevel*.csv</li>
+            <li>annotation_stage*.csv</li>
+            <li>annotation_idlevel3/4.csv</li>
+            <li>lib_stage*.csv</li>
             <li>rt_*.csv</li>
           </ul>
         </div>
@@ -1194,9 +1274,9 @@ footer p { margin: 0; }
           <span class="doclink-name">Retention-time checking</span>
           <span class="doclink-desc">How the two engines and the generic filter work, and what to use them for.</span>
         </a>
-        <a class="doclink" href="idlevel3.html">
-          <span class="doclink-name">Acyl chains analysis by EAD</span>
-          <span class="doclink-desc">Locating double bonds and oxygen along each chain, and the limits of that call.</span>
+        <a class="doclink" href="stage3.html">
+          <span class="doclink-name">Stage 3: acyl-chain analysis</span>
+          <span class="doclink-desc">Locating double bonds and oxygen along each chain by EAD or UVPD, and the limits of that call.</span>
         </a>
         <a class="doclink" href="nomenclature.html">
           <span class="doclink-name">Nomenclature and CXSMILES</span>
