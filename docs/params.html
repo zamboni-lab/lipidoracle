@@ -160,8 +160,8 @@ PARAM:                          # Numeric and threshold parameters
 <tr>
 <td><code>stage3</code></td>
 <td>bool or string</td>
-<td><code>False</code>, <code>'ead1'</code>, <code>'ead2'</code>, <code>'uvpd'</code></td>
-<td>Run stage 3: localise C=C and oxygen positions along the acyl chains, reporting idlevel 3 and 4. <code>ead1</code> skips oxidised species; <code>ead2</code> is required for anything carrying <code>;O</code>. <code>True</code>/<code>'v1'</code>/<code>'v2'</code> are accepted aliases. See <a href="stage3.html">Acyl-chain analysis</a>.</td>
+<td><code>False</code>, <code>'ead1'</code>, <code>'ead2'</code>, <code>'uvpd'</code>, <code>'oad'</code>, <code>'ozid'</code></td>
+<td>Run stage 3: localise C=C and oxygen positions along the acyl chains, reporting idlevel 3 and 4. <code>ead1</code> skips oxidised species; <code>ead2</code> is required for anything carrying <code>;O</code>. <code>oad</code> currently supports unoxidised diacyl PC <code>[M+H]+</code>. <code>ozid</code> uses complete aldehyde/Criegee diagnostic pairs for its documented positive-ion profiles. Unsupported profiles fail closed. <code>True</code>/<code>'v1'</code>/<code>'v2'</code> are accepted aliases. See <a href="stage3.html">Acyl-chain analysis</a>.</td>
 </tr>
 <tr>
 <td><code>rt_check</code></td>
@@ -300,19 +300,19 @@ PARAM:                          # Numeric and threshold parameters
 <td><code>s3_min_margin</code></td>
 <td>float</td>
 <td><code>0.05</code></td>
-<td>Minimum relative gap between the two best candidates before idlevel 4 names a position (<code>ead1</code>). Fitted against known positions.</td>
+<td>Minimum relative gap between the two best candidates before idlevel 4 names a position (<code>ead1</code>, <code>oad</code>, and <code>ozid</code>). Fitted against known positions for EAD; OAD and OzID calibration remains provisional.</td>
 </tr>
 <tr>
 <td><code>s3_min_matched</code></td>
 <td>int</td>
 <td><code>3</code></td>
-<td>Minimum peaks the winning candidate must have matched for that gap to count (<code>ead1</code>)</td>
+<td>Minimum peaks the winning candidate must have matched for that gap to count (<code>ead1</code> and <code>oad</code>); OzID uses complete diagnostic pairs instead.</td>
 </tr>
 <tr>
 <td><code>s3_intensity_scaling</code></td>
 <td>string</td>
 <td><code>'none'</code></td>
-<td>Compressive transform on matched intensity (<code>ead2</code> only): <code>none</code>, <code>sqrt</code>, <code>log10</code>, <code>ln</code>, <code>log2</code>. <code>ead1</code> always applies <code>sqrt</code> as part of its scoring model.</td>
+<td>Compressive transform on matched intensity (<code>ead2</code> only): <code>none</code>, <code>sqrt</code>, <code>log10</code>, <code>ln</code>, <code>log2</code>. <code>ead1</code> and <code>oad</code> always apply <code>sqrt</code> as part of their scoring models.</td>
 </tr>
 <tr>
 <td><code>db_n_notation</code></td>
@@ -325,6 +325,24 @@ PARAM:                          # Numeric and threshold parameters
 <td>bool</td>
 <td><code>False</code></td>
 <td>Diagnostic only: also score chemically impossible (allene) placements as a null, adding a column to <code>diag/s3_resolvability.csv</code>. Never emitted as an annotation.</td>
+</tr>
+<tr>
+<td><code>ozid_require_complete_pair</code></td>
+<td>bool</td>
+<td><code>True</code></td>
+<td>Require both aldehyde and Criegee products for every expected OzID double bond before accepting a localization.</td>
+</tr>
+<tr>
+<td><code>ozid_min_complete_pairs</code></td>
+<td>int</td>
+<td><code>1</code></td>
+<td>Minimum number of complete OzID diagnostic pairs required for an accepted localization.</td>
+</tr>
+<tr>
+<td><code>ozid_formula_mz_tolerance</code></td>
+<td>float</td>
+<td><code>0.01</code></td>
+<td>Maximum absolute precursor-mass disagreement (Da) between the library formula/adduct and observed precursor; inconsistent formulas and isotope labels fail closed.</td>
 </tr>
 </tbody>
 </table>

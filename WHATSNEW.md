@@ -1,5 +1,25 @@
 # What's new
 
+## v1.0.195
+
+### OAD and OzID stage-3 engines
+
+LipidOracle can now localise acyl-chain double bonds from OAD and OzID spectra
+in addition to EAD and UVPD.
+
+- **OAD** implements the MS-DIAL `PCOadSpectrumGenerator` and common acyl OAD
+  rules for unoxidised diacyl PC `[M+H]+` spectra. OAD02 and OAD15 are required
+  anchors; the remaining OAD ions provide intensity-weighted ranking evidence.
+  Unsupported classes, adducts, oxidised lipids, ether chains, and sphingoid
+  bases fail closed.
+- **OzID** matches formula-aware aldehyde/Criegee product pairs and supports
+  the validated PC/PE `[M+H]+`, PI `[M+Na]+`, and DG/TG `[M+NH4]+` profiles.
+  Complete diagnostic pairs drive localisation, with methyl-end notation and
+  the PUFA double-bond-index correction handled automatically.
+- Both engines use the shared posterior candidate selection and report their
+  localisation uncertainty in the stage-3 diagnostics. They are selected with
+  `WORKFLOW.stage3: oad` or `WORKFLOW.stage3: ozid`.
+
 ## v1.0.180
 
 ### 1. First implementation of Lipid Data Quality Scoring

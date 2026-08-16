@@ -836,7 +836,7 @@ footer p { margin: 0; }
       <div>
         <h1>Lipid annotation from MS data</h1>
         <p>
-          Complete annotation engine for CID, EAD, and UVPD spectra, from shorthand to C=C
+          Complete annotation engine for CID, EAD, UVPD, OAD, and OzID spectra, from shorthand to C=C
           and oxidation localization in acyl chains. Rust-based. Runs as a Docker container.
         </p>
         <p>
@@ -902,7 +902,7 @@ footer p { margin: 0; }
             <strong>Review the parameters, then run again.</strong> Or simply trust the defaults, which use the internal LipidOracle library and a permissive RT checking routine (LiRI).</p>
               <pre><code>WORKFLOW:
   lipidoracle: True       <span class="c"># internal MS1/MS2 annotation engine</span>
-  stage3: False    <span class="c"># No EAD/UVPD analysis of acyl chains</span>
+  stage3: False    <span class="c"># No EAD/UVPD/OAD/OzID analysis of acyl chains</span>
   rt_check: liri          <span class="c"># False | legacy | liri | hydra</span></code></pre>
           </div>
         </div>
@@ -953,7 +953,7 @@ footer p { margin: 0; }
         </div>
         <div class="pipe-row">
           <h3>Resolve acyl chains</h3>
-          <p>On EAD or UVPD spectra, locates C=C and oxidation positions by scoring simulated isomer spectra. Reports idlevel 3, and idlevel 4 once consolidated, or idlevel 2 where the isomers do not resolve.</p>
+          <p>On EAD, UVPD, OAD, or OzID spectra, locates C=C and, where supported, oxidation positions by scoring simulated isomers against method-specific diagnostic ions. Reports idlevel 3, and idlevel 4 once consolidated, or idlevel 2 where the isomers do not resolve.</p>
           <span class="lvl-chip" data-lvl="3">stage 3</span>
         </div>
         <div class="pipe-row">
@@ -1194,7 +1194,7 @@ footer p { margin: 0; }
         </a>
         <a class="doclink" href="stage3.html">
           <span class="doclink-name">Stage 3: acyl-chain analysis</span>
-          <span class="doclink-desc">Locating double bonds and oxygen along each chain by EAD or UVPD, and the limits of that call.</span>
+          <span class="doclink-desc">Locating double bonds and oxygen along each chain by EAD, UVPD, OAD, or OzID, and the limits of that call.</span>
         </a>
         <a class="doclink" href="nomenclature.html">
           <span class="doclink-name">Nomenclature and CXSMILES</span>
@@ -1251,4 +1251,3 @@ footer p { margin: 0; }
     <p><a href="https://github.com/zamboni-lab/lipidoracle">GitHub</a></p>
   </div>
 </footer>
-

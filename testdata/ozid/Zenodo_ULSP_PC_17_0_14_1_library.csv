@@ -1,0 +1,2 @@
+lib_id,name,species,class,formula,smiles,mass,adducts,score,rarity,chains,frag_mz,frag_label,frag_w,frag_type,provenance
+zenodo_7636522_pc_17_0_14_1,PC 17:0_14:1-d5,PC 17:0_14:1;d5,PC,C39H71D5NO8P,[2H]C([2H])(OC(=O)CCCCCCCCCCCCCCCC)[C@@]([2H])(OC(=O)CCCCCCC/C=C\CCCC)C([2H])([2H])OP(=O)([O-])OCC[N+](C)(C)C,722.562239,[M+H]+,1.0,0,2,669.486729|685.481643,OzID-aldehyde-n5|OzID-criegee-n5,100.0|100.0,1234|1234,Derived from LipidOz Zenodo 7636522 ULSP_POS.xlsx CC BY 4.0
