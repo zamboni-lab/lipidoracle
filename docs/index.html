@@ -272,7 +272,7 @@ section + section { border-top: var(--rule); }
   display: grid;
   grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
   gap: 56px;
-  align-items: center;
+  align-items: start;
 }
 .hero h1 {
   font-size: clamp(2.2rem, 5.4vw, 3.5rem);
@@ -280,12 +280,25 @@ section + section { border-top: var(--rule); }
   letter-spacing: -.032em;
   line-height: 1.06;
 }
+.hero-title {
+  grid-column: 1 / -1;
+}
+.hero-copy {
+  grid-column: 1;
+}
 .hero p {
   margin: 22px 0 0;
   font-size: clamp(1.02rem, 1.9vw, 1.15rem);
   color: var(--text-2);
   max-width: 46ch;
 }
+.hero-features {
+  margin: 22px 0 0;
+  padding-left: 1.25rem;
+  color: var(--text-2);
+  max-width: 46ch;
+}
+.hero-features li + li { margin-top: 6px; }
 .hero-cta {
   display: flex;
   flex-wrap: wrap;
@@ -295,6 +308,7 @@ section + section { border-top: var(--rule); }
 .hero-art {
   display: flex;
   justify-content: center;
+  align-self: start;
 }
 .hero-art img {
   width: 100%;
@@ -304,7 +318,8 @@ section + section { border-top: var(--rule); }
 }
 @media (max-width: 860px) {
   .hero .wrap { grid-template-columns: 1fr; gap: 36px; }
-  .hero-art { order: -1; justify-content: flex-start; }
+  .hero-title, .hero-copy { grid-column: auto; }
+  .hero-art { justify-content: flex-start; }
   .hero-art img { max-width: 176px; }
 }
 
@@ -833,12 +848,23 @@ footer p { margin: 0; }
 
   <section class="hero">
     <div class="wrap">
-      <div>
-        <h1>Lipid annotation from MS data</h1>
+      <div class="hero-title">
+        <h1>Lipid structures, honestly annotated.</h1>
+      </div>
+      <div class="hero-copy">
         <p>
-          Complete annotation engine for CID, EAD, UVPD, OAD, and OzID spectra, from shorthand to C=C
-          and oxidation localization in acyl chains. Rust-based. Runs as a Docker container.
+          Hieararchical, traceable, all-isomers annotation of MS1, CID, EAD, UVPD, OAD, and OzID spectra. Rust-based. Runs as a Docker container.
         </p>
+        <ul class="hero-features">
+          <li><strong>Truly untargeted:</strong> includes built-in library spanning 49 lipid classes, including rare chain lengths and oxidised forms for >3 Mio unique compounds</li>
+          <li><strong>Multi-method structural elucidation</strong> using CID, EAD, UVPD, OAD, and OzID libraries</li>
+          <li><strong>Hierarchical elucidation</strong> from species-level composition to positionally resolved double bonds and acyl-chain modifications</li>
+          <li><strong>Traceable scores and fragment evidence at every level.</strong> Resolvability analysis accounts for fragment selectivity and lowers the annotation level when discriminating evidence is insufficient</li>
+          <li><strong>Posterior scoring</strong> turns competing structures into probabilities, retains a credible set, reports confidence for each position, and preserves uncertainty instead of forcing a winner</li>
+          <li><strong>Self-tuning retention-time validation</strong> learns class-specific behaviour from confident annotations in each run to remove spurious matches, with optional external anchors</li>
+          <li><strong>CXSMILES for identifications and matched fragments,</strong> keeping structures and their evidence machine-readable</li>
+          <li><strong>An interactive dashboard</strong> for quick quality control, result exploration, and spectrum-level evidence review</li>
+        </ul>
         <p>
           © Zamboni lab, ETH Zurich.
         </p>
