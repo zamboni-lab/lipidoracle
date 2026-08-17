@@ -222,13 +222,13 @@ matching:
 | `False` | No RT filtering. |
 
 Every engine works from this run's own annotations alone. Point `rt_ref` at a
-CSV of known retention times (columns `hg`, `c`, `db`, `mod`, plus an RT
-column) to sharpen the fit further — it is optional. A generic formula-based
-check runs afterward regardless of engine, governed by `PARAM.rt_deviation_cutoff`
-(fraction of the RT axis when ≤ 1, seconds when > 1). If you get too many
-false positives, tighten `rt_check` (try `hydra`) or lower
-`rt_deviation_cutoff`; if you lose true positives, relax it or drop to `liri`
-or `False`.
+CSV of known retention times (columns `hg`, `c`, `db`, `mod`, `rt`) to sharpen
+the fit further — it is optional; an example lives at `/data/rt_ref_2min.csv`
+in the image. A generic formula-based check runs afterward regardless of
+engine, governed by `PARAM.rt_deviation_cutoff` (fraction of the RT axis when
+≤ 1, seconds when > 1). If you get too many false positives, tighten
+`rt_check` (try `hydra`) or lower `rt_deviation_cutoff`; if you lose true
+positives, relax it or drop to `liri` or `False`.
 
 ### Adding libraries
 
@@ -237,21 +237,19 @@ merged into the search, as absolute container paths or local relative paths:
 
 ```yaml
 WORKFLOW:
-  library_extra: [ '/data/lightsplash.csv' ]
+  library_extra: [ '/data/my_library.csv' ]
 ```
-
-The image ships three SPLASH internal-standard libraries under `/data/`:
-`lightsplash.csv`, `equisplash.csv`, and `ultimatesplash.csv`. Reference them
-by that path in `library_extra` the same way as a custom library.
 
 A custom CSV can be a plain MS1 list or carry MS2 fragments. Recognised
 columns: `name`, `species`, `formula`, `chains` (defaults to 0), `hg_class`,
 `adduct`, `mod`, and the optional fragment set `frag_mz`, `frag_w`,
 `frag_label`, `frag_type`.
 
-For internal standards used in RT/quantification rather than library search,
-use `WORKFLOW.is_peaks` instead — a CSV with columns `name`, `mass`, `c`,
-`db`, `mod`, `hg`. Leave it `''` to skip IS matching.
+For internal standards, point `WORKFLOW.is_peaks` at a CSV instead — the image
+ships `/data/equisplash.csv`, `/data/lightsplash.csv`, and
+`/data/ultimatesplash.csv` (the EquiSPLASH, LightSPLASH, and UltimateSPLASH
+mixes) ready to use directly; a custom file needs columns `name`, `mass`, `c`,
+`db`, `mod`, `hg`. Leave `is_peaks` `''` to skip IS matching.
 
 ### Matching tolerances
 

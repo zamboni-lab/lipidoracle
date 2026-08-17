@@ -56,11 +56,15 @@ WORKFLOW:
   #               + per-class regression), always run together.
   rt_check: liri
 
-  rt_ref: '/output/rt_ref_2min.csv'
+  # Optional CSV with reference RTs for external alignment. The file must
+  # have columns: hg,c,db,mod,rt.
+  # An example is provided in /data/rt_ref_2min.csv. Leave empty ('') to skip external alignment.
+  rt_ref: ''
 
-  # Path to an internal-standards CSV file.
-  # Required columns: name, mass, c, db, mod, hg.
-  # Leave empty ('') to skip IS matching.
+  # Path to an internal-standards CSV file. The bundled EquiSPLASH,
+  # LightSPLASH, and UltimateSPLASH CSVs can be used directly; legacy files
+  # with name, mass, c, db, mod, and hg columns are also accepted.
+  # Change to /data/equisplash.csv or /data/ultimatesplash.csv as needed.
   is_peaks: ''
   
 PARAM:
@@ -81,7 +85,7 @@ PARAM:
   # Remove deuterated compounds from libraries.
   # This is useful with LipidBlast and LipiDex libraries.
   # Deuterated internal standards should be provided as csv in is_peaks (under WORKFLOW):
-  remove_d: True
+  remove_d: False
 
   ## Adducts
   # Adduct list considered during library generation and matching.
@@ -166,6 +170,7 @@ PARAM:
   # Every parameter governing stage 3 is prefixed s3_. The generic ones
   # below apply whatever engine WORKFLOW.stage3 selects; s3_legacy_* and
   # s3_post_* below configure the two candidate-selection methods.
+  # (The former ead_*/include_ms1_monochain spellings are still accepted.)
   #
   # If True, also run C=C analysis for idlevel 1 single-acyl unsaturated lipids
   # such as LPC/LPE after MS1, IS, cleanup, and RT filtering.
@@ -185,10 +190,9 @@ PARAM:
   # caps only what is reported.
   s3_max_output: 20
   # Weight of the chain correlation term in the final idlevel-3 score.
-  # No longer used by any engine: ead2 never had a correlation term, and
-  # ead1's was dropped when its score became intensity-aware. Kept accepted
-  # so existing configs keep loading.
-  s3_chain_corr_weight: 0.05
+  # Only used by the uvpd engine: ead2 never had a correlation term, and
+  # ead1's was dropped when its score became intensity-aware.
+  s3_uvpd_corr_weight: 0.05
   # Intensity transform applied before scoring: none, sqrt/light, log10, ln,
   # or log2. Used by ead2 only -- ead1 always applies sqrt, which is part of
   # its scoring model rather than a tunable (see dev/EAD.md).
