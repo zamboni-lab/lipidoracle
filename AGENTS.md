@@ -56,25 +56,23 @@ These are results, not failures. Reporting them as errors is the most common way
 an agent misrepresents a LipidOracle run.
 
 - **An idlevel-4 name with no positions** (`FA 20:4`, not `FA 20:4(5,8,11,14)`)
-  means the spectrum did not determine them. Since v1.0.173 positions are
-  written into the name only when one placement carries enough posterior mass.
-  `diag/l3_resolvability.csv` says how uncertain it was.
-- **`score_L3` of 1.0 is not high confidence.** It is normalised against each
+  means the spectrum did not determine them. Positions are written into the
+  name only when one placement carries enough posterior mass.
+  `diag/s3_resolvability.csv` says how uncertain it was.
+- **`score_s3` of 1.0 is not high confidence.** It is normalised against each
   spectrum's own best candidate, so the top hit always reads 1.0 whether the
   evidence is decisive or absent. It ranks within a spectrum; it does not measure
-  confidence, and it is not comparable across engines.
+  confidence, and it is not comparable across stage-3 engines (`ead1`, `ead2`,
+  `uvpd`, `oad`, `ozid` — selected via `WORKFLOW.stage3`).
 - **A `name` ending in `[DB sn1: ...]`** is a name plus a confidence tail. Strip
   everything from ` [` onward before parsing; the remainder is a strict
   Shorthand2020 name.
 - **A `smiles` value with no `|...|` tail** is fully determined, not truncated.
   The tail appears only when something was left ambiguous.
-- **Names look different from a pre-1.0.173 run.** Modifications are now written
-  Shorthand2020-style (`;5OH`, not `;OH(5)`), and `ctu:` / `f:` / `RG:` no longer
-  appear in CXSMILES. Expected, not a regression.
 
 ## Repository conventions
 
 - `docs/` is the published GitHub Pages site (plain HTML, no build step).
-  `nomenclature.html` and `idlevel3.html` are the authoritative pages for naming
+  `nomenclature.html` and `stage3.html` are the authoritative pages for naming
   and for acyl-chain localisation respectively.
 - Licensed PolyForm Noncommercial 1.0.0. Non-commercial use only.

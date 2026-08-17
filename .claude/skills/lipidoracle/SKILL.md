@@ -1,13 +1,19 @@
 ---
 name: lipidoracle
-description: Run LipidOracle to annotate lipids from LC-MS/MS data. Use whenever the task involves lipid annotation, lipidomics identification, an .mgf file of MS1/MS2 spectra, locating C=C or oxidation positions in acyl chains (EAD/UVPD), retention-time filtering of lipid IDs, or reading LipidOracle's annotation.csv / summary.csv / dashboard.html outputs. Also use when the user mentions "lipidoracle", "zambonilab/lipidoracle", or asks to configure lipidoracle.yaml.
+description: Run LipidOracle to annotate lipids from LC-MS/MS data. Use whenever the task involves lipid annotation, lipidomics identification, an .mgf file of MS1/MS2 spectra, locating C=C or oxidation positions in acyl chains (EAD/UVPD/OAD/OzID), retention-time filtering of lipid IDs, or reading LipidOracle's annotation.csv / summary.csv / dashboard.html outputs. Also use when the user mentions "lipidoracle", "zambonilab/lipidoracle", or asks to configure lipidoracle.yaml.
 ---
 
 # LipidOracle
 
 LipidOracle annotates lipids from MS1 and MS2 spectra: accurate-mass matching,
-MS2 fragment scoring, retention-time validation, and — on EAD or UVPD spectra —
-C=C and oxidation positions within acyl chains.
+MS2 fragment scoring, retention-time validation, and — on EAD, UVPD, OAD, or
+OzID spectra — C=C and oxidation positions within acyl chains.
+
+A run has three **stages** (`s1` MS1, `s2` MS2, `s3` acyl-chain positions) and
+parameters are named after the stage that owns them (`s2_lo_score_cutoff`,
+`s3_min_score`). Stages are steps; **idlevel** (1–4) is a different axis
+describing how much detail a result carries. `ms1_*`/`ms2_*` parameters refer
+to the *MS level* of the data, not a stage.
 
 It is distributed **only as a Docker image**. There is no pip package, no
 standalone binary, and no public source build. Every run happens through
@@ -123,9 +129,10 @@ Read that file, edit it for the dataset, then re-run the identical command.
 ### 3. Second run — the real annotation
 
 Same command. Now that `<output>/lipidoracle.yaml` exists, the pipeline runs:
-load spectra → build libraries → match precursor m/z (idlevel 1) → score MS2
-fragments (idlevel 2) → retention-time filter → optional acyl-chain analysis
-(idlevel 3) → consolidate isomers (idlevel 4) → write CSVs and dashboard.
+load spectra → build libraries → match precursor m/z (stage 1, idlevel 1) →
+score MS2 fragments (stage 2, idlevel 2) → retention-time filter → optional
+acyl-chain analysis (stage 3, idlevel 3) → consolidate isomers (idlevel 4) →
+write CSVs and dashboard.
 
 CID datasets finish in seconds. EAD datasets take up to a few minutes.
 
@@ -170,66 +177,123 @@ them.
 
 ## Configuring a run
 
-The four decisions that actually matter live under `WORKFLOW:`. Everything else
-in the file has a sensible default.
+The decisions that actually matter live under `WORKFLOW:`. Everything else in
+the file has a sensible default.
 
 ```yaml
 WORKFLOW:
   lipidoracle: True      # internal MS1/MS2 engine — keep on
-  acyl_analysis: False   # False | ead1 | ead2 | uvpd — C=C / oxidation localisation
+  stage3: False           # False | ead1 | ead2 | uvpd | oad | ozid
   rt_check: liri         # False | liri | hydra | legacy
   library_extra: [ ]     # optional extra CSV libraries
+  is_peaks: ''            # optional internal-standard CSV
 ```
-
-**`acyl_analysis`** — leave `False` for CID data; it needs EAD or UVPD spectra.
-Set `ead1` for the chain-ladder engine (double bonds, no oxygen support at all —
-`;O` species are dropped), `ead2` for anything oxidised, or `uvpd` for 193/213 nm
-photodissociation data. Accepts `v1`/`v2` as aliases. With `ead2`, also raise
-`PARAM.l3_max_candidates` to 30000 — see the caution below.
-
-**`rt_check`** — `liri` (default) fits a per-class retention index from the
-run's own confident MS2 hits; safe but leaves classes without MS2 evidence
-unfiltered. `hydra` predicts across classes from chemistry features and can
-flag classes with zero MS2 confirmation, but is stricter and needs tuning.
-`legacy` exists only for rollback comparison. Both engines are followed by a
-generic RT filter that removes in-source fragments.
-
-If you miss true positives, relax thresholds gradually; if you get too many
-false positives, tighten the score and RT cutoffs. Change one group at a time
-and diff the outputs.
-
-### Acyl-chain parameters (`l3_*`)
-
-Two of these are worth knowing before a run rather than after.
-
-**`l3_max_candidates`** (10000) caps enumeration per feature; beyond it the
-candidate list is stride-sampled. A single oxidised token such as `20:4;O`
-enumerates **~22,300** candidates, so on oxidised work the default silently
-discards the true structure *before scoring ever runs*. The output is
-indistinguishable from a scoring failure. **Raise it to 30000 whenever
-`acyl_analysis: ead2` is set on `;O` species.**
-
-**`l3_selection`** (`posterior`) decides which positional candidates get
-reported and when idlevel 4 commits to a position. `posterior` keeps the
-smallest candidate set holding 95% of the posterior mass and names a position
-only when one placement carries `l3_post_min_mass` (0.5). `legacy` is the old
-relative-score cutoff — it names more positions and is right less often
-(measured: 84/96 features asserted at 65% correct, versus 55/96 at 73%). Use
-`legacy` to reproduce pre-1.0.173 output, not to get more calls.
-
-`l3_post_temperature` and `l3_min_margin` are **fitted against reference sets
-with known positions**, not chosen by taste. Do not tune them to make output
-look better; changing them invalidates the calibration.
-
-> **Renamed in v1.0.173.** Every idlevel-3/4 parameter moved from `ead_*` to
-> `l3_*` (`ead_max_candidates` → `l3_max_candidates`, `ead_chain_cutoff` →
-> `l3_legacy_cutoff`, `include_ms1_monochain` → `l3_include_ms1_monochain`, and
-> so on). The old spellings still load as aliases, so **do not "fix" an existing
-> config** that uses them — but write new configs with `l3_*`.
 
 The complete annotated parameter file, with every key and its default, is in
 [reference/lipidoracle.default.yaml](reference/lipidoracle.default.yaml). Read
 it before changing anything outside `WORKFLOW:`.
+
+### Choosing the `stage3` engine
+
+Leave `False` for CID data; every engine needs a position-sensitive
+dissociation method.
+
+| Value | Use for |
+| --- | --- |
+| `ead1` | Chain-ladder engine for double bonds. No oxygen support at all — `;O` species are dropped. |
+| `ead2` | Exact-formula cleavage engine; required for anything oxidised (`;O`). |
+| `uvpd` | 193/213 nm photodissociation data. |
+| `oad` | Unoxidised diacyl PC `[M+H]+` only (MS-DIAL OAD rules). Other classes, adducts, oxidised lipids, ether chains, and sphingoid bases are skipped, not approximated. |
+| `ozid` | Aldehyde/Criegee diagnostic pairs on the validated PC/PE `[M+H]+`, PI `[M+Na]+`, and DG/TG `[M+NH4]+` profiles. Everything else fails closed. |
+
+With `ead2` on oxidised species, also raise `PARAM.s3_max_candidates` to
+30000 — see below.
+
+### Choosing the RT model
+
+`rt_check` selects at most one retention-time engine, run after MS1/MS2
+matching:
+
+| Value | Behaviour |
+| --- | --- |
+| `liri` (default) | Fits a per-class retention index from this run's own confident MS2 hits. Safe, but leaves classes with no MS2 evidence (e.g. idlevel-1 FA/CE hits) unfiltered. |
+| `hydra` | Cross-class hydrophobicity model sharing information via headgroup fragments; can also flag idlevel-1 hits with zero MS2 confirmation. Stricter, needs tuning. |
+| `legacy` | The original two-regression model (generic formula + per-class), always run together. |
+| `False` | No RT filtering. |
+
+Every engine works from this run's own annotations alone. Point `rt_ref` at a
+CSV of known retention times (columns `hg`, `c`, `db`, `mod`, plus an RT
+column) to sharpen the fit further — it is optional. A generic formula-based
+check runs afterward regardless of engine, governed by `PARAM.rt_deviation_cutoff`
+(fraction of the RT axis when ≤ 1, seconds when > 1). If you get too many
+false positives, tighten `rt_check` (try `hydra`) or lower
+`rt_deviation_cutoff`; if you lose true positives, relax it or drop to `liri`
+or `False`.
+
+### Adding libraries
+
+`WORKFLOW.library_extra` takes a list of extra CSV (or CSV.GZ) libraries
+merged into the search, as absolute container paths or local relative paths:
+
+```yaml
+WORKFLOW:
+  library_extra: [ '/data/lightsplash.csv' ]
+```
+
+The image ships three SPLASH internal-standard libraries under `/data/`:
+`lightsplash.csv`, `equisplash.csv`, and `ultimatesplash.csv`. Reference them
+by that path in `library_extra` the same way as a custom library.
+
+A custom CSV can be a plain MS1 list or carry MS2 fragments. Recognised
+columns: `name`, `species`, `formula`, `chains` (defaults to 0), `hg_class`,
+`adduct`, `mod`, and the optional fragment set `frag_mz`, `frag_w`,
+`frag_label`, `frag_type`.
+
+For internal standards used in RT/quantification rather than library search,
+use `WORKFLOW.is_peaks` instead — a CSV with columns `name`, `mass`, `c`,
+`db`, `mod`, `hg`. Leave it `''` to skip IS matching.
+
+### Matching tolerances
+
+The core knobs, all under `PARAM:`:
+
+| Parameter | Default | Controls |
+| --- | --- | --- |
+| `ms1_tolerance` | 0.01 Da | Precursor m/z window for candidate lookup. |
+| `ms2_tolerance` | 0.02 Da | Fragment m/z window for MS2 peak matching. |
+| `ms1_ppm_penalty` | 0.03 | Score penalty per absolute ppm of MS1 mass error. |
+| `s1_lo_score_cutoff` / `s1_score_top_cutoff` | 0.2 / 0.5 | Absolute and relative MS1 score floors. |
+| `s2_lo_score_cutoff` / `s2_score_top_cutoff` | 0.2 / 0.9 | Absolute and relative MS2 score floors. |
+| `rarity_max` | 3 | Excludes library entries above this rarity index before matching. `0` keeps only the most common species. |
+| `rarity_penalty` | 0.15 | Score penalty per rarity unit, applied instead of excluding rare entries outright. |
+
+Widen tolerances or lower score cutoffs to recover more candidates; tighten
+them to cut false positives. Change one parameter at a time and diff the
+output before changing another.
+
+### Stage-3 parameters (`s3_*`)
+
+Two of these are worth knowing before a run rather than after.
+
+**`s3_max_candidates`** (10000) caps enumeration per feature; beyond it the
+candidate list is stride-sampled. A single oxidised token such as `20:4;O`
+enumerates **~22,300** candidates, so on oxidised work the default silently
+discards the true structure *before scoring ever runs*. The output is
+indistinguishable from a scoring failure. **Raise it to 30000 whenever
+`stage3: ead2` is set on `;O` species.**
+
+**`s3_selection`** (`posterior`) decides which positional candidates get
+reported and when idlevel 4 commits to a position. `posterior` keeps the
+smallest candidate set holding 95% of the posterior mass and names a position
+only when one placement carries `s3_post_min_mass` (0.5). `legacy` is the
+relative-score cutoff — it names more positions and is right less often
+(measured: 84/96 features asserted at 65% correct, versus 55/96 at 73%).
+
+`s3_post_temperature` and `s3_min_margin` are **fitted against reference sets
+with known positions**, not chosen by taste. Do not tune them to make output
+look better; changing them invalidates the calibration. OAD and OzID reuse the
+same EAD-fitted temperature and remain provisional until a larger known-position
+panel calibrates them separately.
 
 ## Reading the results
 
@@ -245,15 +309,16 @@ Identification levels encode how much evidence backs each call:
 | idlevel | Evidence | Detail reached |
 | --- | --- | --- |
 | 1 | Precursor m/z only | Shorthand name: class, total carbons, total double bonds |
-| 2 | MS2 fragments matched, scored by `score_L2` | Class confirmed, often individual acyl chains |
-| 3 | EAD/UVPD isomer scoring, `score_L3` | C=C and oxidation positions along chains |
+| 2 | MS2 fragments matched, scored by `score_s2` | Class confirmed, often individual acyl chains |
+| 3 | EAD/UVPD/OAD/OzID isomer scoring, `score_s3` | C=C and oxidation positions along chains |
 | 4 | Consolidation | One row per spectrum merging all idlevel-3 candidates, with a confidence tail |
 
-`score_L3` is normalised against each spectrum's own best candidate, so **the top
+`score_s3` is normalised against each spectrum's own best candidate, so **the top
 candidate always reads 1.0** whether the evidence is decisive or absent. It ranks
 within a spectrum; it does not measure confidence, and it is not comparable
-across engines. What separates a determined position from an undetermined one is
-whether idlevel 4 named it at all.
+across engines — equal `score_s3` values from different stage-3 engines are not
+equivalent evidence. What separates a determined position from an undetermined
+one is whether idlevel 4 named it at all.
 
 Names are strict **Shorthand2020** (Liebisch et al.): modifications carry their
 position in front of the abbreviation, `;5OH` not `;OH(5)`. A `/` between chains
@@ -270,11 +335,11 @@ At idlevel 4 the `name` also carries a bracketed confidence tail —
 `FA 18:2 [DB sn1: Δ9 92%, Δ12 88%]`. Strip it before parsing the name; the part
 before ` [` is the strict Shorthand2020 core.
 
-**Do not report a species-level idlevel-4 name as a failure.** Since v1.0.173
-LipidOracle writes positions into the name only when the evidence supports one
-placement, so `FA 20:4` at idlevel 4 means the positions were *not determined* —
-which is a result, not a missing one. `diag/l3_resolvability.csv` says how
-uncertain it was.
+**Do not report a species-level idlevel-4 name as a failure.** LipidOracle
+writes positions into the name only when the evidence supports one placement,
+so `FA 20:4` at idlevel 4 means the positions were *not determined* — which is
+a result, not a missing one. `diag/s3_resolvability.csv` says how uncertain it
+was.
 
 Column-by-column output reference: [reference/outputs.md](reference/outputs.md).
 
@@ -285,7 +350,7 @@ The repository ships two ready-to-run datasets under `testdata/`:
 | Folder | Spectra | Notes |
 | --- | ---: | --- |
 | `testdata/cid/` | 9,948 | CID run, annotation to idlevel 1–2. Seconds. |
-| `testdata/ead/` | 38,255 | EAD run. Set `acyl_analysis: ead1` to localise C=C. |
+| `testdata/ead/` | 38,255 | EAD run. Set `stage3: ead1` to localise C=C. |
 
 ## Troubleshooting
 
@@ -297,13 +362,13 @@ The repository ships two ready-to-run datasets under `testdata/`:
 | All RT values look ~60x too small | The MGF used minutes in `RTINSECONDS`. Re-export rather than patching the file. |
 | Results can't be joined to the upstream feature table | The MGF was exported without `FEATURE_ID`, so `mgf_feat` is empty. |
 | Config changes have no effect | Edited a file outside the mounted output folder, or a stray `*.yaml` in the output folder is being picked up first. |
-| `WORKFLOW.acyl_analysis: unrecognized value` | Use `False`, `ead1`/`v1`, `ead2`/`v2`, or `uvpd`. |
-| No idlevel 3 rows | `acyl_analysis` is `False`, or the data is CID and carries no EAD/UVPD fragments. |
-| idlevel 3 has candidates but idlevel 4 names no positions | Expected under `l3_selection: posterior` when the spectrum did not determine one. Check `top_prob` and `cred95` in `diag/l3_resolvability.csv` before changing anything. |
-| Oxidised lipids localise poorly | `acyl_analysis: ead1` ignores `;O` species entirely — use `ead2`. If already on `ead2`, `l3_max_candidates` is likely too low; raise it to 30000. |
-| Names changed shape vs an older run | v1.0.173 emits Shorthand2020 (`;5OH`, not `;OH(5)`) and drops `ctu:`/`f:`/`RG:` from CXSMILES. Expected, not a regression. |
+| `WORKFLOW.stage3: unrecognized value` | Use `False`, `ead1`/`v1`, `ead2`/`v2`, `uvpd`, `oad`, or `ozid`. |
+| No idlevel 3 rows | `stage3` is `False`, or the data is CID and carries no EAD/UVPD/OAD/OzID fragments. |
+| idlevel 3 has candidates but idlevel 4 names no positions | Expected under `s3_selection: posterior` when the spectrum did not determine one. Check `top_prob` and `cred95` in `diag/s3_resolvability.csv` before changing anything. |
+| Oxidised lipids localise poorly | `stage3: ead1` ignores `;O` species entirely — use `ead2`. If already on `ead2`, `s3_max_candidates` is likely too low; raise it to 30000. |
 | Too many IDs removed | `rt_check: hydra` is strict; try `liri`, or `False` to see the unfiltered set. |
 | Dashboard plots are blank | Offline machine — the CDN libraries could not load. The CSVs are unaffected. |
+| `oad`/`ozid` finds nothing on data you expect it to handle | Both fail closed outside their validated profile: `oad` is unoxidised diacyl PC `[M+H]+` only; `ozid` is PC/PE `[M+H]+`, PI `[M+Na]+`, DG/TG `[M+NH4]+` only. Other classes, adducts, oxidised lipids, ether chains, and sphingoid bases are skipped, not approximated. |
 
 ## Reference
 
@@ -312,7 +377,7 @@ Documentation site: <https://zamboni-lab.github.io/lipidoracle/>
 | Page | Covers |
 | --- | --- |
 | [params](https://zamboni-lab.github.io/lipidoracle/params.html) | every `lipidoracle.yaml` setting |
-| [idlevel3](https://zamboni-lab.github.io/lipidoracle/idlevel3.html) | the EAD engines, candidate selection, every `l3_*` parameter |
+| [stage3](https://zamboni-lab.github.io/lipidoracle/stage3.html) | the EAD/UVPD/OAD/OzID engines, candidate selection, every `s3_*` parameter |
 | [nomenclature](https://zamboni-lab.github.io/lipidoracle/nomenclature.html) | Shorthand2020, CXSMILES ambiguity encoding, the confidence tail |
 | [rt](https://zamboni-lab.github.io/lipidoracle/rt.html) | the retention-time engines |
 | [library](https://zamboni-lab.github.io/lipidoracle/library.html) | class coverage, extra libraries, rarity |

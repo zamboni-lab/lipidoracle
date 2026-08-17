@@ -13,15 +13,15 @@ Everything below lands in the folder mounted at `/output`.
 ├── lipidoracle.yaml      # copy of the parameters actually used
 └── diag/
     ├── annotation_full.csv
-    ├── annotation_idlevel1.csv
-    ├── annotation_idlevel2.csv
-    ├── annotation_idlevel3.csv     # only when acyl_analysis is on
-    ├── annotation_idlevel4.csv     # only when acyl_analysis is on
-    ├── l3_resolvability.csv        # only when acyl_analysis is on
+    ├── annotation_stage1.csv
+    ├── annotation_stage2.csv
+    ├── annotation_idlevel3.csv     # only when stage3 is on
+    ├── annotation_idlevel4.csv     # only when stage3 is on
+    ├── s3_resolvability.csv        # only when stage3 is on
     ├── summary_by_feature.csv
     ├── input_spectra.csv
-    ├── lib_idlevel1.csv
-    ├── lib_idlevel2.csv
+    ├── lib_stage1.csv
+    ├── lib_stage2.csv
     └── rt_*.csv
 ```
 
@@ -50,8 +50,8 @@ several rows when candidates tie.
 | `class` | Lipid class, e.g. `PC`, `TG`, `FA` |
 | `mod_str` | Modifications, e.g. `;O`, `;5OH` |
 | `rarity` | Rarity index of the library entry; higher = less common, penalised in scoring |
-| `score_L2` | MS2 match score (idlevel 2+) |
-| `score_L3` | Positional localisation score (idlevel 3/4) |
+| `score_s2` | MS2 match score (idlevel 2+) |
+| `score_s3` | Positional localisation score (idlevel 3/4). Not comparable across stage-3 engines. |
 | `ms2_tic` | Total ion current of the filtered MS2 spectrum |
 | `ms2_evidence` | Which structural features the matched fragments support |
 | `ms2_match_n` / `ms2_missed_n` | Library fragments found / not found |
@@ -63,8 +63,8 @@ several rows when candidates tie.
 | idlevel | Evidence | Detail reached |
 | --- | --- | --- |
 | 1 | Precursor m/z only | Class, total carbons, total double bonds |
-| 2 | MS2 fragments matched (`score_L2`) | Class confirmed, often individual chains |
-| 3 | EAD/UVPD isomer scoring (`score_L3`) | C=C and oxidation positions |
+| 2 | MS2 fragments matched (`score_s2`) | Class confirmed, often individual chains |
+| 3 | EAD/UVPD/OAD/OzID isomer scoring (`score_s3`) | C=C and oxidation positions |
 | 4 | Isomer consolidation | One row per spectrum merging idlevel-3 candidates |
 
 Filter to `idlevel >= 2` for MS2-confirmed calls. idlevel 1 rows are mass-only
@@ -72,9 +72,8 @@ and carry the most false positives — the RT engines exist mainly to prune them
 
 ### Reading names
 
-Names are **Shorthand2020** (Liebisch et al. 2020). Since v1.0.173 that is
-enforced throughout, and legacy spellings in input libraries are normalised on
-load.
+Names are **Shorthand2020** (Liebisch et al. 2020), enforced throughout; other
+spellings in input libraries are normalised on load.
 
 `/` between chains = sn-positions known. `_` = composition known, positions not.
 No separator (`PC 34:1`) = species-level shorthand only.
@@ -83,10 +82,6 @@ Modifications follow a semicolon with **the position in front of the
 abbreviation**: `;3OH,5OH` hydroxyls, `;5oxo` ketone, `;8COOH` extra carboxyl,
 `;5Ep` epoxide, `;[11-13cy3:0]` cyclopropane. Double-bond geometry when known:
 `18:1(9Z)`, `18:1(9E)`.
-
-Older LipidOracle wrote `;OH(3,5)`, `;oxo(5)`, `;ep(5)`, `;cyc(3)`. Those are
-still *accepted* as input but are no longer *emitted* — if you are diffing
-against pre-1.0.173 output, expect this change in every modified name.
 
 #### The idlevel-4 confidence tail
 
@@ -107,7 +102,7 @@ it unpositioned (`FA 20:4;OH`, not `FA 20:4;11OH`). That is deliberate: a group
 positioned mid-chain alongside unlocalised double bonds does not say how those
 bonds divide around it, so the body would be unrepresentable.
 
-What the percentage means depends on `PARAM.l3_selection`: under `posterior`
+What the percentage means depends on `PARAM.s3_selection`: under `posterior`
 (the default) it is that position's marginal probability; under `legacy` it is
 the fraction of retained candidates supporting it — candidate support, not a
 calibrated probability.
@@ -134,10 +129,10 @@ Two traps if you consume this column:
   `dbPos(...)` and `mPos(...)` live in the title field and are dropped. Preserve
   it yourself if something rewrites these strings.
 
-Removed in v1.0.173, so do not expect them and do not write parsers for them:
-`ctu:` (a ChemAxon query feature that added no information — undetermined
-geometry is now just a bare `C=C`), and the `f:` / `RG:` encodings of unresolved
-sn-assignment, replaced by `$snN$` labels on a complete molecule.
+`ctu:` blocks and the `f:` / `RG:` encodings of unresolved sn-assignment do not
+appear in this format — do not write parsers expecting them. Undetermined
+double-bond geometry is a bare `C=C`; unresolved sn-assignment uses `$snN$`
+labels on a complete molecule instead.
 
 ## summary.csv
 
@@ -160,40 +155,41 @@ stay blank while the CSVs remain fully valid.
 
 | File | Contents |
 | --- | --- |
-| `annotation_full.csv` | Every column the engine tracks: `ppm`, `dmz`, per-metric scores (`score_L2_metric`, `score_L2_modcos`), matched and missed fragment lists, `ms2_top10`, `rank`, `compressed`. Use this to explain *why* a call scored the way it did. |
-| `annotation_idlevel1.csv`, `annotation_idlevel2.csv` | Per-stage snapshots before later filtering |
-| `annotation_idlevel3.csv` | Retained positional candidates, up to `l3_max_output` per feature. Broader than what reaches `annotation.csv`. |
+| `annotation_full.csv` | Every column the engine tracks: `ppm`, `dmz`, per-metric scores (`score_s2_metric`, `score_s2_modcos`), matched and missed fragment lists, `ms2_top10`, `rank`, `compressed`. Use this to explain *why* a call scored the way it did. |
+| `annotation_stage1.csv`, `annotation_stage2.csv` | Per-stage snapshots before later filtering |
+| `annotation_idlevel3.csv` | Retained positional candidates, up to `s3_max_output` per feature. Broader than what reaches `annotation.csv`. |
 | `annotation_idlevel4.csv` | The per-feature positional consensus |
-| `l3_resolvability.csv` | Why a position was or was not called: `n_candidates`, `top_prob` (posterior mass on the winner), `cred95` (size of the 95% credible set), `db_marginals` (per-position marginals, strongest first), `margin` and `matched_n` (what the idlevel-4 gates read), and `null_rel` when `l3_null_decoys` is on. One row per scored feature. **Reports only — it gates nothing.** |
+| `s3_resolvability.csv` | Why a position was or was not called: `n_candidates`, `top_prob` (posterior mass on the winner), `cred95` (size of the 95% credible set), `db_marginals` (per-position marginals, strongest first), `margin` and `matched_n` (what the idlevel-4 gates read), and `null_rel` when `s3_null_decoys` is on. For `ozid`, resolvability is pair-specific: the winner needs more complete diagnostic pairs than its best structurally distinct rival. One row per scored feature. **Reports only — it gates nothing.** |
 | `summary_by_feature.csv` | One row per MS1 feature, aggregating its spectra, peaks, entropy, and all competing IDs |
 | `input_spectra.csv` | Parsed spectra as the engine saw them — first stop when the MGF may be malformed |
-| `lib_idlevel1.csv` | Generated MS1 library: masses, adducts, chains, rarity |
-| `lib_idlevel2.csv` | Generated MS2 library: expected fragments with labels, weights, types |
+| `lib_stage1.csv` | Generated MS1 library: masses, adducts, chains, rarity |
+| `lib_stage2.csv` | Generated MS2 library: expected fragments with labels, weights, types |
 | `rt_liri.csv` / `rt_hydra.csv` | Per-candidate RT model output: `rt_pred`, `sigma`, `z`, `tier`, `verdict` — shows exactly which IDs the engine rejected |
 | `rt_generic.csv` | The generic post-filter: `rt_pred`, `err`, `cutoff`, `protected`, `severe`, `verdict` |
 
-To trace why an expected lipid is missing, walk backwards: `lib_idlevel1.csv`
-(was it in the library?) → `annotation_idlevel1.csv` (did the mass match?) →
-`annotation_idlevel2.csv` (did MS2 score above cutoff?) → `rt_*.csv` (did the RT
+To trace why an expected lipid is missing, walk backwards: `lib_stage1.csv`
+(was it in the library?) → `annotation_stage1.csv` (did the mass match?) →
+`annotation_stage2.csv` (did MS2 score above cutoff?) → `rt_*.csv` (did the RT
 filter reject it?).
 
 To trace why a **position** was not called, the walk is different — the
 annotation is there, it just names the chain at species level. Check
 `annotation_idlevel3.csv` first (were candidates enumerated at all? if the file
-is empty, `acyl_analysis` is off or the data is not EAD/UVPD), then
-`l3_resolvability.csv`:
+is empty, `stage3` is off or the data is not EAD/UVPD/OAD/OzID), then
+`s3_resolvability.csv`:
 
-- `n_candidates` at or near `l3_max_candidates` means the search was truncated
+- `n_candidates` at or near `s3_max_candidates` means the search was truncated
   by stride-sampling. A single oxidised token like `20:4;O` enumerates ~22,300
   candidates; below that cap the true structure can be sampled out *before
   scoring runs*, and the output looks identical to a scoring failure. Raise
-  `l3_max_candidates` to 30000 for oxidised work.
-- `top_prob` below `l3_post_min_mass` (default 0.5) is the ordinary case: the
+  `s3_max_candidates` to 30000 for oxidised work.
+- `top_prob` below `s3_post_min_mass` (default 0.5) is the ordinary case: the
   spectrum genuinely did not determine the position, and the credible set in
   `cred95` says how uncertain it was. This is the intended behaviour of
-  `l3_selection: posterior`, not a defect.
-- `margin` below `l3_min_margin` or `matched_n` below `l3_min_matched` means
-  `ead1`'s gates abstained.
-- Setting `l3_selection: legacy` will name more positions, at a measurably lower
-  hit rate. Use it for comparison against pre-1.0.173 output, not to get more
-  calls.
+  `s3_selection: posterior`, not a defect.
+- `margin` below `s3_min_margin` or `matched_n` below `s3_min_matched` means
+  `ead1`'s or `oad`'s gates abstained.
+- For `ozid`, an incomplete diagnostic pair (missing aldehyde or Criegee
+  partner) blocks localisation by default (`ozid_require_complete_pair: True`).
+- Setting `s3_selection: legacy` will name more positions, at a measurably lower
+  hit rate.

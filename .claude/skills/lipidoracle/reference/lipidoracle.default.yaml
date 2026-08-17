@@ -1,16 +1,9 @@
 ## LipidOracle parameters
 ## ---------------------------------------------------------------------------
-## This file controls the full annotation pipeline:
-##   - which engines run (MS1, MS2, EAD, RT checks),
-##   - how tolerant matching is,
-##   - how strict filtering is,
-##   - and which external libraries are merged in.
-##
-## Practical tuning strategy:
-##   1) Start with defaults.
-##   2) If you miss true positives, relax thresholds gradually.
-##   3) If you get too many false positives, tighten score/RT filters.
-##   4) Change one group at a time and compare output deltas.
+## This file controls the full annotation pipeline. 
+## It's divided in two sections: WORKFLOW (which stages to run) and PARAM (how to run them).
+##   - it's safe to edit WORKFLOW for your run
+##   - don't edit the PARAM unless you know what you're doing, or are following a published protocol.
 ## ---------------------------------------------------------------------------
 VERSION: x.y.z
 
@@ -21,8 +14,8 @@ WORKFLOW:
   # Leave empty ('') to process all spectra in the MGF.
   mz_target: ''
 
-  ## Engines
-  # produce idlevel=1 and idlevel=2 candidates
+  ## Stage 1 and 2
+  # Run stages 1 and 2: MS1 accurate-mass matching followed by MS2 matching
   lipidoracle: True
   # the LipiDex and LipidBlast libraries are provided for testing and comparison.
   # many functionalities are not supported with these engines.
@@ -34,14 +27,17 @@ WORKFLOW:
   # Paths can be absolute container paths (/data/...) or local relative paths.
   library_extra: [ ] # e.g. '/data/ST501.csv'
 
-  ## Optional acyl-chain C=C (+ oxygen site) assignment
+  ## Stage 3: optional acyl-chain C=C (+ oxygen site) assignment
   #   False   -> analysis is skipped.
   #   ead1    -> heuristic chain-ladder engine. Skips oxidized species.
   #   ead2    -> exact-formula cleavage engine; required for oxidized lipids
   #              (anything carrying ';O'), which ead1 ignores entirely.
   #   uvpd    -> for 193/213 nm ultraviolet photodissociation data.
-  #   True    -> accepted for backwards compatibility, and means ead1. 
-  acyl_analysis: False
+  #   oad     -> MS-DIAL-compatible oxygen attachment dissociation profile;
+  #              currently unoxidized diacyl PC [M+H]+ only.
+  #   ozid    -> ozone-induced dissociation using paired aldehyde/Criegee
+  #              products. See the supported class/adduct profiles below.
+  stage3: False
 
   ## Retention-time filtering
   # Selects at most one RT-checking engine:
@@ -68,10 +64,6 @@ WORKFLOW:
   is_peaks: ''
   
 PARAM:
-  # Emit Hoffmann (2025) evidence-completeness score columns. This is a
-  # reporting score, not a probability, and is comparable only within a group.
-  hoffmann_scoring: false
-
   ## Performance + matching behavior
   # Number of CPU cores used for MS2 scoring.
   ncores: 6
@@ -103,6 +95,8 @@ PARAM:
   ms2_noise_abs: 10
   # Percentile-based intensity floor (0..1). The final threshold is:
   # max(ms2_noise_abs, percentile(ms2_noise_prc)).
+  # OzID deliberately ignores this percentile and uses only ms2_noise_abs so
+  # the weaker member of a required aldehyde/Criegee pair is not discarded.
   ms2_noise_prc: 0.3
   # Ignore peaks too close to precursor:
   # keep only peaks with mz < precursor_mz - ms2_mztrim.
@@ -117,28 +111,46 @@ PARAM:
   # Score penalty applied per absolute ppm of MS1 mass error.
   ms1_ppm_penalty: 0.03
 
-  # Primary MS2 score model used by Rust implementation.
-  # Currently expected value: 'hybrid'
-  ms2_score: 'hybrid'
-  # Companion MS2 similarity metric reported as score_L2_modcos.
-  ms2_score2: 'greedy-cosine'
+  ## Stage 1
+  # Minimum absolute MS1 score to keep a candidate.
+  s1_lo_score_cutoff: 0.2
+  # Relative MS1 cutoff vs best score in same precursor/spectrum context.
+  s1_score_top_cutoff: 0.5
   
-  ## L1/L2 Score thresholds
+  ## Stage 2
   # Minimum absolute MS2 score to keep a candidate.
-  ms2_lo_score_cutoff: 0.2
+  s2_lo_score_cutoff: 0.2
   # Relative MS2 cutoff vs best score in same scan.
   # Example: 0.9 keeps candidates within 90% of scan top score.
-  ms2_score_top_cutoff: 0.9
-  # Minimum absolute MS1 score to keep a candidate.
-  ms1_lo_score_cutoff: 0.2
-  # Relative MS1 cutoff vs best score in same precursor/spectrum context.
-  ms1_score_top_cutoff: 0.5
-
+  s2_score_top_cutoff: 0.9
   # If only headgroup evidence is observed for multi-chain lipids, collapse chain-
   # unresolved names to species-level labels to avoid over-specific false detail.
-  ms2_compress_undefined_chains_to_species: True
-  # If True, MS1 stage avoids re-annotating entries already covered by stronger IDs.
-  ms1_matching_ignore_already_matched: True
+  s2_compress_undefined_chains_to_species: True
+
+  # Report a chain arrangement at species level (PC 34:1 instead of PC 16:0_18:1)
+  # when no observed fragment distinguishes it from its best rival arrangement --
+  # i.e. its score lead rests only on peaks both arrangements predict. The line
+  # above catches the extreme case where nothing but headgroup fragments matched;
+  # this catches the common one where a shared chain fragment matched but no
+  # discriminating one did. The audit in diag/s2_chain_resolvability.csv is
+  # written either way, so the effect can be measured before names change.
+  S2_unresolvable_chains_to_species: False
+  # Softmax temperature for the chain-isomer posterior in that audit. UNFITTED:
+  # 1.0 is neutral, and top_prob/cred95 are diagnostic only until it is fitted.
+  # Fitting needs compositions of known chain arrangement, which no dataset in
+  # this repo provides (dev/EAD.md: nist-ead-gt/long-gt/cid-gt have no
+  # per-compound acyl ground truth). With such labels:
+  #   s2_chain_dump_candidates: True, run, then
+  #   python dev/l2_chain_calibrate.py <run_dir> --labels <labels.csv>
+  s2_chain_temperature: 1.0
+  # Also write diag/s2_chain_candidates.csv: every scored arrangement with its
+  # raw score, which is what the temperature sweep above reads. ~50 rows per
+  # audited composition, so off unless you are calibrating.
+  s2_chain_dump_candidates: False
+  # If True, drop the stage-1 (idlevel 1) row for any spectrum that already
+  # carries a stage-2 (idlevel >= 2) identification, so a feature is not
+  # reported twice at two levels of detail.
+  s2_suppress_idlevel1_if_idlevel2: True
   
   ## Debugging and diagnostics
   # Enable verbose diagnostic logging.
@@ -148,39 +160,41 @@ PARAM:
   # Deduplication/consistency filtering on MS1 IDs. Disable for debugging.
   ms1_filter: True
 
-  ## Acyl-analysis: shared settings (all engines)
-  # Every parameter governing idlevel 3/4 is prefixed l3_. The generic ones
-  # below apply whatever engine WORKFLOW.acyl_analysis selects; l3_legacy_* and
-  # l3_post_* below configure the two candidate-selection methods.
-  # (The former ead_*/include_ms1_monochain spellings are still accepted.)
+  ## Stage 3 -- acyl analysis: shared settings (all engines)
+  # Stage 3 reports idlevel 3 (all plausible positional candidates) and idlevel 4
+  # (the aggregate consensus form); it stays at idlevel 2 where nothing resolves.
+  # Every parameter governing stage 3 is prefixed s3_. The generic ones
+  # below apply whatever engine WORKFLOW.stage3 selects; s3_legacy_* and
+  # s3_post_* below configure the two candidate-selection methods.
   #
   # If True, also run C=C analysis for idlevel 1 single-acyl unsaturated lipids
   # such as LPC/LPE after MS1, IS, cleanup, and RT filtering.
-  l3_include_ms1_monochain: True
+  s3_include_ms1_monochain: True
   # Maximum unsaturation complexity accepted for exhaustive positional search.
-  l3_max_unsaturated: 6
+  s3_max_unsaturated: 6
   # Maximum total hydroxyl/oxygen positions accepted for exhaustive search.
   # Used by ead2 and uvpd; ead1 has no oxygen support and ignores it.
-  l3_max_oxygen: 2
+  s3_max_oxygen: 2
   # Hard cap on candidate enumeration per feature (prevents combinatorial
   # blow-up). A single oxidized chain token (e.g. 20:4;O) enumerates ~22k
   # (db, oh/ket position) candidates. Set 5000-10000 for non-oxidized chains,
   # 30000 for oxidized ones.
-  l3_max_candidates: 10000
-  # Max candidates written to diag/annotation_idlevel3.csv per feature. This
+  s3_max_candidates: 10000
+  # Max candidates written to diag/annotation_idlevel3.csv (the stage-3
+  # candidate export) per feature. This
   # caps only what is reported.
-  l3_max_output: 20
+  s3_max_output: 20
   # Weight of the chain correlation term in the final idlevel-3 score.
   # No longer used by any engine: ead2 never had a correlation term, and
   # ead1's was dropped when its score became intensity-aware. Kept accepted
   # so existing configs keep loading.
-  l3_chain_corr_weight: 0.05
+  s3_chain_corr_weight: 0.05
   # Intensity transform applied before scoring: none, sqrt/light, log10, ln,
   # or log2. Used by ead2 only -- ead1 always applies sqrt, which is part of
   # its scoring model rather than a tunable (see dev/EAD.md).
-  l3_intensity_scaling: 'none'
+  s3_intensity_scaling: 'none'
   # Absolute minimum idlevel-3 score to keep a position assignment.
-  l3_min_score: 0.2
+  s3_min_score: 0.2
   # Minimum relative gap between the best and second-best candidate,
   # (s1 - s2) / s1 on the raw score scale, before positions are written into
   # the idlevel-4 name. Below it the chain is reported at species level
@@ -190,32 +204,43 @@ PARAM:
   # Fitted, not chosen: swept against known positions in testdata/ara-ead and
   # testdata/light-ead. Below 0.02 the top call is right 16-23% of the time;
   # above 0.05 it is right 86-97%. Used by ead1.
-  l3_min_margin: 0.05
+  s3_min_margin: 0.05
   # Minimum peaks the winning candidate must have matched before its lead
-  # counts as evidence. Guards l3_min_margin, which is relative and so can
+  # counts as evidence. Guards s3_min_margin, which is relative and so can
   # look decisive when the whole comparison rests on one or two peaks -- the
   # failure mode behind confident-but-wrong monoene calls on
   # testdata/light-ead. Raising this past 3 costs assertions at no gain in
   # precision. Used by ead1.
-  l3_min_matched: 3
+  s3_min_matched: 3
   # Diagnostic: also score chemically impossible (allene) placements as a null,
   # to see where "indistinguishable from impossible" falls. Never emitted as an
-  # annotation; adds a null_rel column to diag/l3_resolvability.csv.
-  l3_null_decoys: False
+  # annotation; adds a null_rel column to diag/s3_resolvability.csv.
+  s3_null_decoys: False
 
-  ## Acyl-analysis: candidate selection and idlevel-4 naming
+  ## OzID acquisition and evidence gates (used only with stage3: ozid)
+  # Require the aldehyde and Criegee members of a diagnostic pair. A lone
+  # product remains visible in diagnostics but cannot establish a position.
+  ozid_require_complete_pair: True
+  # Number of complete pairs required before emitting a localized assignment.
+  ozid_min_complete_pairs: 1
+  # Formula-derived precursor must agree with observed precursor within this
+  # absolute tolerance. This prevents unsupported isotope labels from being
+  # interpreted with the wrong diagnostic masses.
+  ozid_formula_mz_tolerance: 0.01
+
+  ## Stage 3 -- candidate selection and idlevel-4 naming
   # Which positional isomers are reported, and how confidently idlevel 4 is
-  # named. Orthogonal to WORKFLOW.acyl_analysis: either method works with any
+  # named. Orthogonal to WORKFLOW.stage3: either method works with any
   # engine.
   #   posterior -> convert scores to a probability distribution over candidates,
-  #                report the smallest set holding l3_post_credible_level of
+  #                report the smallest set holding s3_post_credible_level of
   #                that probability, and write positions into the idlevel-4
   #                name only when one placement carries at least
-  #                l3_post_min_mass. The confidence tail then reports each
+  #                s3_post_min_mass. The confidence tail then reports each
   #                position's marginal probability
   #                ("[DB sn1: d5 93%, d14 55%, ...]").
   #   legacy    -> the original method (Wu et al.): report every candidate
-  #                scoring within l3_legacy_cutoff of the top one, and name
+  #                scoring within s3_legacy_cutoff of the top one, and name
   #                idlevel 4 where those candidates happen to agree. The tail
   #                reports vote counts over that set, not probabilities.
   #                Accepted as 'cutoff' too, its former name.
@@ -224,24 +249,24 @@ PARAM:
   # Measured on testdata/hete-ead with ead2, legacy asserts a C=C position on
   # 84 of 96 features and is right on 55 (65%); posterior asserts 55 and is
   # right on 40 (73%).
-  l3_selection: 'posterior'
+  s3_selection: 'posterior'
 
-  ## ...when l3_selection: legacy
+  ## ...when s3_selection: legacy
   # Relative score cutoff vs the top candidate.
   #
   # Note this threshold is weakly discriminating: scored against chemically
   # impossible (allene) placements, an impossible candidate lands within 1% of
   # the best real one in ~11% of features. See dev/FDR_PLAN.md section 5.5.
-  l3_legacy_cutoff: 0.99
+  s3_legacy_cutoff: 0.99
 
-  ## ...when l3_selection: posterior
+  ## ...when s3_selection: posterior
   # Posterior mass the reported credible set must reach.
-  l3_post_credible_level: 0.95
+  s3_post_credible_level: 0.95
   # Minimum posterior mass on a single placement before its positions are
   # written into the idlevel-4 name. Below this the chain is reported at
   # species level (FA 20:4 rather than FA 20:4(5,8,11,14)) -- the positions
   # were never determined, and the confidence tail still lists what is known.
-  l3_post_min_mass: 0.5
+  s3_post_min_mass: 0.5
   # Softmax temperature turning normalized candidate scores into
   # probabilities.
   #
@@ -254,7 +279,7 @@ PARAM:
   # ara-ead and light-ead, 0.001 and 0.01 give identical idlevel-4 output,
   # while 0.05 and 0.2 abstain on 40-60% more features at no gain in
   # precision. Re-fit with dev/l3_validate.py if scoring changes again.
-  l3_post_temperature: 0.01
+  s3_post_temperature: 0.01
 
   ## RT general
   # Relative to the observed RT-axis length when <= 1; absolute seconds when > 1.
@@ -346,3 +371,6 @@ PARAM:
   # false positives in the LipidBlast library and should be skipped in routine runs.
   lipidblast_skip: [ 'NAGlySer', 'NAGly', 'LDGCC', 'DGCC', 'NAOrn', 'AHexCer', 'VAE', 'ADGGA' ]
 
+  # Emit lipidomics data-quality score columns.
+  # See Hoffmann et al, JLR 2025, DOI: 10.1016/j.jlr.2025.100817
+  lipidomics_data_quality_scoring: True
