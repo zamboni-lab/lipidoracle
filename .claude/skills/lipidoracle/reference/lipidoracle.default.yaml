@@ -180,7 +180,7 @@ PARAM:
   # (db, oh/ket position) candidates. Set 5000-10000 for non-oxidized chains,
   # 30000 for oxidized ones.
   s3_max_candidates: 10000
-  # Max candidates written to diag/annotation_idlevel3.csv (the stage-3
+  # Max candidates written to diag/annotation_stage3.csv (the stage-3
   # candidate export) per feature. This
   # caps only what is reported.
   s3_max_output: 20

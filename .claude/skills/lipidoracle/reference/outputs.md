@@ -15,8 +15,8 @@ Everything below lands in the folder mounted at `/output`.
     ├── annotation_full.csv
     ├── annotation_stage1.csv
     ├── annotation_stage2.csv
-    ├── annotation_idlevel3.csv     # only when stage3 is on
-    ├── annotation_idlevel4.csv     # only when stage3 is on
+    ├── annotation_stage3.csv       # only when stage3 is on
+    ├── annotation_stage4.csv       # only when stage3 is on
     ├── s3_resolvability.csv        # only when stage3 is on
     ├── summary_by_feature.csv
     ├── input_spectra.csv
@@ -157,8 +157,8 @@ stay blank while the CSVs remain fully valid.
 | --- | --- |
 | `annotation_full.csv` | Every column the engine tracks: `ppm`, `dmz`, per-metric scores (`score_s2_metric`, `score_s2_modcos`), matched and missed fragment lists, `ms2_top10`, `rank`, `compressed`. Use this to explain *why* a call scored the way it did. |
 | `annotation_stage1.csv`, `annotation_stage2.csv` | Per-stage snapshots before later filtering |
-| `annotation_idlevel3.csv` | Retained positional candidates, up to `s3_max_output` per feature. Broader than what reaches `annotation.csv`. |
-| `annotation_idlevel4.csv` | The per-feature positional consensus |
+| `annotation_stage3.csv` | Retained positional candidates, up to `s3_max_output` per feature. Broader than what reaches `annotation.csv`. |
+| `annotation_stage4.csv` | The per-feature positional consensus |
 | `s3_resolvability.csv` | Why a position was or was not called: `n_candidates`, `top_prob` (posterior mass on the winner), `cred95` (size of the 95% credible set), `db_marginals` (per-position marginals, strongest first), `margin` and `matched_n` (what the idlevel-4 gates read), and `null_rel` when `s3_null_decoys` is on. For `ozid`, resolvability is pair-specific: the winner needs more complete diagnostic pairs than its best structurally distinct rival. One row per scored feature. **Reports only — it gates nothing.** |
 | `summary_by_feature.csv` | One row per MS1 feature, aggregating its spectra, peaks, entropy, and all competing IDs |
 | `input_spectra.csv` | Parsed spectra as the engine saw them — first stop when the MGF may be malformed |
@@ -174,7 +174,7 @@ filter reject it?).
 
 To trace why a **position** was not called, the walk is different — the
 annotation is there, it just names the chain at species level. Check
-`annotation_idlevel3.csv` first (were candidates enumerated at all? if the file
+`annotation_stage3.csv` first (were candidates enumerated at all? if the file
 is empty, `stage3` is off or the data is not EAD/UVPD/OAD/OzID), then
 `s3_resolvability.csv`:
 
