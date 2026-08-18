@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scoring, thresholds, and transparent reporting – LipidOracle</title>
+    <style>
+        :root {
+            --bg: #f6f7f9;
+            --panel: #ffffff;
+            --text: #10151c;
+            --text-2: #45505f;
+            --muted: #6b7688;
+            --border: #e3e7ed;
+            --accent: #2f6df6;
+            --accent-text: #1b4fd0;
+            --good: #1a7f4e;
+            --good-bg: #eaf7f0;
+            --bad: #b3401a;
+            --bad-bg: #fbeee7;
+            --radius: 12px;
+        }
+        @media (prefers-color-scheme: dark) {
+            :root:not([data-theme="light"]) {
+                --bg: #0c1017;
+                --panel: #141a24;
+                --text: #e8edf5;
+                --text-2: #b3becd;
+                --muted: #8593a6;
+                --border: #242d3b;
+                --accent: #6f9bff;
+                --accent-text: #a8c2ff;
+                --good: #4fd68e;
+                --good-bg: #10261c;
+                --bad: #ff8b63;
+                --bad-bg: #2a1712;
+            }
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+        }
+        .wrap {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 20px;
+        }
+        h1 { font-size: 2.5rem; margin-bottom: 1rem; line-height: 1.2; }
+        h2 { font-size: 1.75rem; margin: 3rem 0 1rem 0; color: var(--accent-text); }
+        h3 { font-size: 1.25rem; margin: 1.5rem 0 0.75rem 0; }
+        h4 { font-size: 1.05rem; margin: 1.25rem 0 0.5rem 0; color: var(--text); }
+        p { margin-bottom: 1rem; max-width: 68ch; color: var(--text-2); }
+        .lede { font-size: 1.15rem; color: var(--text); max-width: 68ch; }
+        .callout {
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-left: 3px solid var(--accent);
+            border-radius: var(--radius);
+            padding: 1rem 1.25rem;
+            margin: 1.5rem 0;
+        }
+        .callout p:last-child, .callout ul:last-child { margin-bottom: 0; }
+        .callout ul { margin-bottom: 0.5rem; }
+        .callout h4 { margin-top: 0; }
+        a { color: var(--accent); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        code { background: var(--panel); padding: 0.2em 0.4em; border-radius: 4px; font-family: monospace; font-size: 0.95em; }
+        pre { background: var(--panel); padding: 1rem; border-radius: var(--radius); overflow-x: auto; margin: 1rem 0; border: 1px solid var(--border); }
+        pre code { background: none; padding: 0; }
+        table { width: 100%; border-collapse: collapse; margin: 1.5rem 0; border: 1px solid var(--border); }
+        thead { background: var(--panel); border-bottom: 1px solid var(--border); }
+        th, td { padding: 0.75rem; text-align: left; border-bottom: 1px solid var(--border); vertical-align: top; }
+        th { font-weight: 600; color: var(--accent-text); }
+        ul, ol { margin-left: 1.5rem; margin-bottom: 1rem; }
+        li { margin-bottom: 0.35rem; color: var(--text-2); }
+        nav { display: flex; gap: 1.5rem; margin-bottom: 2rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border); }
+        nav a { font-size: 0.95rem; color: var(--text-2); }
+        .compare {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+            margin: 1.5rem 0;
+        }
+        @media (max-width: 620px) { .compare { grid-template-columns: 1fr; } }
+        .compare > div {
+            border-radius: var(--radius);
+            padding: 1.1rem 1.25rem;
+            border: 1px solid var(--border);
+        }
+        .compare .bad { background: var(--bad-bg); border-color: color-mix(in srgb, var(--bad) 35%, var(--border)); }
+        .compare .good { background: var(--good-bg); border-color: color-mix(in srgb, var(--good) 35%, var(--border)); }
+        .compare h4 { margin-top: 0; }
+        .compare .bad h4 { color: var(--bad); }
+        .compare .good h4 { color: var(--good); }
+        .compare ul { margin-left: 1.1rem; }
+        .compare li { color: var(--text); font-size: 0.95rem; }
+        .refs { margin-top: 0.5rem; }
+        .refs li { color: var(--text-2); font-size: 0.95rem; margin-bottom: 0.6rem; }
+        .tag {
+            display: inline-block;
+            font-size: 0.78rem;
+            font-weight: 600;
+            letter-spacing: 0.02em;
+            color: var(--accent-text);
+            background: var(--panel);
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            padding: 0.15rem 0.6rem;
+            margin-right: 0.4rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <nav>
+            <a href="index.html">← Back to landing page</a>
+        </nav>
+        <article>
+<h1>Scoring, thresholds, and honest reporting</h1>
+<p class="lede">This page explains LipidOracle's scoring and tresholding system. It differs in many ways from classical lipidomics tools that stop at a positive match. LipidOracle attempts to quantify specificity: is there enough information to claim that the top hit is better than the others? Or is there a group of equally likely candidates? These questions are addressed quantitatively by analyzing all possible isomers, their fragments, and obtain a honest estimate of the underlying ambiguity in annotation.</p>
+
+<div class="callout">
+<h4>The short version</h4>
+<p>Every scoring step in LipidOracle is built around one rule: <strong>never report more structural detail than the spectrum can actually support, and always make it possible to check that claim yourself.</strong> Where the evidence is decisive, the name says so. Where it isn't, the name says that too, instead of quietly picking whichever candidate happened to score highest.</p>
+</div>
+
+<h2>Two questions, kept structurally separate</h2>
+<p>LipidOracle's annotation pipeline answers two different questions about a lipid, and it never lets an answer to one leak into the other: <strong>which chains are present</strong> (stage 2), and <strong>where exactly, within those chains, does a double bond or oxidation sit</strong> (stage 3). Each stage produces its own score (<code>score_s2</code>, <code>score_s3</code>), its own selection logic, and its own honesty check, described below. Neither one is used to prop up the other.</p>
+
+<h2>Why a single confidence score is not enough</h2>
+<p>Both stage-2 and stage-3 scores are normalised <em>per spectrum</em>, so the best-scoring candidate for a given feature always reads close to its own scale's maximum. That's a deliberate, standard choice — it's what makes a score comparable across spectra of wildly different intensity — but it has a consequence worth stating plainly, because most tools that report a "confidence score" don't: <strong>a high top score, on its own, cannot tell you whether the runner-up scored almost as well.</strong></p>
+<p>A feature where the second-best candidate trails far behind is a confident, well-determined call. A feature where five or ten candidates all cluster near the same top score is not, even though both features report an identical-looking best score. Reading the score column alone, you cannot tell these two situations apart — and a workflow that reports only the single best-scoring name per feature is, structurally, throwing that distinction away.</p>
+<p>This is exactly why LipidOracle does not stop at "report the best-scoring candidate." Everything described below — the selection method, the assertion gate, and the resolvability audit — exists specifically to recover the information a bare top score cannot express: <em>how many isomers is the spectrum actually unable to tell apart</em>, and is the reported name honest about that.</p>
+
+<h2>How this differs from a typical lipidomics workflow</h2>
+<p>Most MS/MS lipid annotation tools score every candidate against the spectrum, keep the single best-scoring hit per feature, and report its name and score as the answer. That's not wrong as far as it goes — but it silently assumes that "best-scoring" means "determined", which, as above, is often not true. LipidOracle starts from the opposite assumption: ambiguity is the normal case, and the pipeline's job is to detect it and say so, not paper over it.</p>
+<div class="compare">
+<div class="bad">
+<h4>Typical workflow</h4>
+<ul>
+<li>Reports the single best-scoring candidate per feature, whether or not any rival came close.</li>
+<li>A fixed score-ratio cutoff (e.g. "within 1% of the top hit") decides what's kept, regardless of how many candidates cluster there.</li>
+<li>A confident-looking name is produced even when the deciding peaks were never actually observed in that spectrum.</li>
+<li>Thresholds are often unstated, unpublished, or buried in source code rather than in the documentation a user reads.</li>
+</ul>
+</div>
+<div class="good">
+<h4>LipidOracle</h4>
+<ul>
+<li>Reports every candidate within a statistically meaningful, spectrum-specific credible set — one candidate when the evidence is decisive, many when it isn't.</li>
+<li>Checks, per feature, whether the winning candidate actually has peaks distinguishing it from its best rival — not just a higher score.</li>
+<li>Falls back to a coarser, honest name (e.g. species-level) rather than asserting a position the spectrum cannot back up.</li>
+<li>Tests its own thresholds against chemically impossible structures, on the record, and publishes every default and every parameter (see <a href="params.html">Parameters</a>).</li>
+</ul>
+</div>
+</div>
+
+<h2>Stage 2: which chains are present</h2>
+<p>Once a sum composition is fixed (say <code>PC 34:1</code>), there is usually more than one way to split those carbons and double bonds across two acyl chains — <code>16:0_18:1</code> or <code>16:1_18:0</code> weigh exactly the same, so a precursor mass alone can never tell them apart. Stage 2 uses the MS2 fragment spectrum to decide, scoring each candidate arrangement as a blend of two questions: did the fragments this structure predicts actually show up, and how much of what was actually measured does this structure explain.</p>
+<pre><code>score_s2 = 0.75 × (matched_weight − 2 × exclusion_penalty) / total_weight
+         + 0.25 × (matched_intensity / total_intensity)</code></pre>
+<p>Fragments a structure predicts should be <strong>absent</strong> count too: finding one anyway is evidence against that structure, and is subtracted at twice its weight — ruling a candidate out is worth more than merely supporting one.</p>
+<p>Passing the score thresholds (<code>s2_lo_score_cutoff</code>, then a relative cutoff against the best candidate in that scan) only means a candidate out-scored its rivals. It does not mean the spectrum could tell them apart. So every contested composition is separately audited: the winning arrangement is compared against its best-scoring disagreeing rival, and the pipeline counts, peak by peak, which of the fragments unique to one or the other were actually observed. Only when the winner's own distinguishing peaks were seen more often than the rival's is the call marked <strong>resolvable</strong>. That verdict — <code>yes</code>, <code>no</code>, or <code>uncontested</code> — is published in every export as <code>rival_resolvability</code>, not buried in an internal log.</p>
+
+<h2>Stage 3: exactly where, within a chain</h2>
+<p>Stage 3 takes an already-identified chain and asks where, specifically, a double bond or an oxygen sits — using MS2 evidence that breaks the chain itself, not just the fragment that detaches it from the glycerol backbone. This needs a dissociation method built for the purpose: LipidOracle supports five, each implementing a published, peer-reviewed fragmentation chemistry (see <a href="#references">references</a> below) rather than a proprietary in-house scheme.</p>
+<table>
+<thead><tr><th>Method</th><th>What it measures</th></tr></thead>
+<tbody>
+<tr><td><code>ead1</code> / <code>ead2</code></td><td>Electron-activated dissociation: a near-continuous fragment ladder along the whole chain, whose spacing shifts at a double bond. <code>ead2</code> additionally localises hydroxyl and ketone groups.</td></tr>
+<tr><td><code>uvpd</code></td><td>UV photodissociation: a sharp pair of diagnostic ions flanking a double bond, ~24 Da apart.</td></tr>
+<tr><td><code>oad</code></td><td>Oxygen attachment dissociation: two required anchor ions per double bond (<code>OAD02</code>, <code>OAD15</code>), currently scoped to unoxidised diacyl PC <code>[M+H]+</code>.</td></tr>
+<tr><td><code>ozid</code></td><td>Ozone-induced dissociation: a matched aldehyde/Criegee ion pair per double bond, validated for specific class/adduct combinations.</td></tr>
+</tbody>
+</table>
+<p>Every candidate's score is rescaled per spectrum so the top hit reads <code>1.0</code> — again, to keep scores comparable across spectra. And again, that means <code>score_s3</code> alone cannot say whether it was a decisive win or a coin toss among ten near-ties. Three further checks exist specifically to recover that missing information, and none of them can be read off the score column alone:</p>
+<ul>
+<li><strong>Selection.</strong> By default, candidates are converted into a probability distribution (a calibrated softmax over the scores), and the pipeline keeps the smallest set of candidates whose combined probability reaches a target (95%). <em>The size of that set is itself the confidence statement</em> — a decisive spectrum keeps one candidate, an ambiguous one keeps many. A position is written into the final name only when a single placement holds a majority of that probability; otherwise the name stays at the level the evidence actually supports.</li>
+<li><strong>The assertion gate.</strong> Even a clear score leader isn't enough on its own — a lead built on a single matched peak isn't real evidence. Before naming a position, LipidOracle additionally requires a minimum score margin over the runner-up <em>and</em> a minimum number of actually matched peaks, together.</li>
+<li><strong>Resolvability.</strong> The same rival-comparison audit used at stage 2, applied here to the positional call: was there a peak in this specific spectrum capable of telling the winning position apart from its closest rival? Published per feature, per aspect, in <code>diag/s3_resolvability.csv</code>.</li>
+</ul>
+
+<h3>Self-testing against impossible structures</h3>
+<p>One further check is unusual enough to be worth calling out on its own. LipidOracle can construct double-bond placements that are <strong>chemically impossible</strong> — double bonds crammed onto consecutive carbons, which real fatty-acid biosynthesis never produces — and score them through the exact same pipeline as real candidates, purely as a sanity check (<code>PARAM.s3_null_decoys</code>). If an impossible structure scores nearly as well as the real winner, that's a warning that the current threshold, not the impossible structure, is the problem. This is how the older, fixed-ratio threshold was shown to be unreliable in the first place: chemically absurd candidates cleared a 99%-of-top-score cutoff in roughly one out of every nine features tested. That's not a hypothetical concern published after the fact to justify a design choice; it's the actual measurement that motivated moving to the probability-based selection method described above, and it's still run on request against any dataset, not just the one it was first measured on.</p>
+
+<h2>Fair, transparent, honest — by construction, not by promise</h2>
+<p>"Fair" and "transparent" are easy words to put on a webpage. Here is what they mean concretely in LipidOracle's design:</p>
+<div class="callout">
+<ul>
+<li><strong>Ambiguity is reported, not resolved by fiat.</strong> When multiple structures are equally consistent with the spectrum, the annotation says so — as multiple idlevel-3 candidates, and as explicit uncertainty markers inside the exported CXSMILES structure itself — rather than arbitrarily picking one and presenting it as settled.</li>
+<li><strong>The pipeline is allowed to say "I don't know".</strong> Every fallback described above (species-level names, unlocalised positions, the assertion gate) exists to let an annotation stop short of a claim the data doesn't support, instead of forcing a confident-looking answer out of thin evidence.</li>
+<li><strong>Nothing about scoring is hidden.</strong> Every formula, every default threshold, and every parameter that changes them is documented in the shipped <a href="params.html">parameter reference</a> and in this run's own generated dashboard — not left to be reverse-engineered from source code.</li>
+<li><strong>What's calibrated is distinguished from what isn't.</strong> Where a confidence number has actually been fitted against known, confirmed positions, that's stated. Where a number is exported only as a diagnostic because no ground-truth dataset exists yet to calibrate it against (for example, stage 2's chain-arrangement posterior), that's stated too, instead of presenting every number as equally trustworthy.</li>
+<li><strong>The method is checked against its own worst case.</strong> The null-decoy test above exists purely to catch LipidOracle being overconfident about its own output — a self-audit most tools do not publish, if they run it at all.</li>
+</ul>
+</div>
+
+<h2 id="references">Built on published, peer-reviewed methods</h2>
+<p>The stage-3 dissociation-chemistry engines are not proprietary in-house heuristics: each implements a specific, published method, and LipidOracle credits the original work rather than presenting a re-implementation as something new. Two of them in particular are direct re-implementations of another group's published algorithm and reference software, adapted to LipidOracle's own candidate-scoring and reporting framework:</p>
+<ul class="refs">
+<li><span class="tag">OAD</span>Uchino H, Tsugawa H, Takahashi H, et al. <em>Computational mass spectrometry accelerates C=C position-resolved untargeted lipidomics using oxygen attachment dissociation.</em> Communications Chemistry. 2022;5:162. <a href="https://doi.org/10.1038/s42004-022-00778-1">https://doi.org/10.1038/s42004-022-00778-1</a> — LipidOracle's <code>oad</code> engine implements the pinned MS-DIAL <code>PCOadSpectrumGenerator</code> spectrum-generation rules from this work.</li>
+<li><span class="tag">OzID</span>Ross DH, Lee J-Y, Bilbao A, et al. <em>LipidOz enables automated elucidation of lipid carbon–carbon double bond positions from ozone-induced dissociation mass spectrometry data.</em> Communications Chemistry. 2023;6:74. <a href="https://doi.org/10.1038/s42004-023-00867-9">https://doi.org/10.1038/s42004-023-00867-9</a> — LipidOracle's <code>ozid</code> engine reproduces LipidOz's precursor-formula aldehyde/Criegee product rules at the spectrum level; it is not a replacement for LipidOz's own chromatographic workflow.</li>
+<li><span class="tag">EAD</span>Wu et al. <em>Analyst.</em> 2025. <a href="https://doi.org/10.1039/d5an00567a">https://doi.org/10.1039/d5an00567a</a> — the published method LipidOracle's <code>ead1</code> engine implements.</li>
+<li><span class="tag">UVPD</span>Williams PE, Klein DR, Greer SM, Brodbelt JS. <em>Pinpointing Double Bond and sn-Positions in Glycerophospholipids via Hybrid 193 nm Ultraviolet Photodissociation Mass Spectrometry.</em> Journal of the American Chemical Society. 2017;139:15681–15690. <a href="https://doi.org/10.1021/jacs.7b06416">https://doi.org/10.1021/jacs.7b06416</a> — the diagnostic-ion chemistry LipidOracle's <code>uvpd</code> engine models.</li>
+</ul>
+<p>Where an engine's current scope is narrower than the published method's full validated range (for example, <code>oad</code>'s restriction to unoxidised diacyl PC <code>[M+H]+</code>), that scope is stated in the engine's own documentation, and unsupported chemistry is skipped outright rather than approximated and reported anyway. See <a href="stage3.html">Stage 3: acyl-chain analysis</a> for the full technical detail behind every engine, and <a href="nomenclature.html">Nomenclature and CXSMILES</a> for exactly how ambiguity is encoded in an exported structure.</p>
+
+<div class="callout">
+<h4>Where to go next</h4>
+<ul>
+<li><a href="stage3.html">Stage 3: acyl-chain analysis</a> — the full technical reference for every engine, parameter, and formula summarised above.</li>
+<li><a href="params.html">Parameters</a> — every threshold in this page, with its default value and what changing it does.</li>
+<li><a href="nomenclature.html">Nomenclature and CXSMILES</a> — how a reported name and structure encode exactly how much is known and how much isn't.</li>
+<li><a href="library.html">The built-in MS2 library</a> — what stage 2 matches against before stage 3 ever runs.</li>
+</ul>
+</div>
+</article>
+    </div>
+</body>
+</html>

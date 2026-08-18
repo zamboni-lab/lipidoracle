@@ -189,7 +189,7 @@ C(CO)(OC(=O)CCCCCCCC=CCC=CCCCCC.*O)COC(=O)CCCCCCCCCCCCCCCCC
 
 <h2>3. Localisation confidence</h2>
 <p>At idlevel 4, where positions are consolidated across candidates, the confidence behind each call is appended to the name in brackets:</p>
-<pre><code>FA 20:4;OH [DB sn1: Δ5 100%, Δ8 100%, Δ12 100%, Δ14 50%, Δ15 50%; OH sn1: 11 100%]</code></pre>
+<pre><code>FA 20:4;11OH [C=C: Δ5 100%, Δ8 100%, Δ12 100% | Δ14 50% or Δ15 50%; OH: 11 100%]</code></pre>
 <p>Positions are comma-separated and each carries its own support. Aspects (<code>DB</code>, <code>OH</code>, <code>oxo</code>) and chains are separated by <code>;</code>. Read this as: a hydroxyl is present and the evidence puts it at C11 with full support; three double bonds are called at Δ5/Δ8/Δ12 with no dissent, and the fourth is supported half at Δ14 and half at Δ15.</p>
 <p><strong>Note where the hydroxyl position lives — in the tail, not the name body.</strong> Writing it into the body (<code>FA 20:4;11OH [...]</code>) would make the name unrepresentable, because a group positioned mid-chain alongside unlocalised double bonds does not say how those bonds divide around it. Leaving the group unpositioned in the body and stating its position as consensus is both representable and a truer record of what was measured.</p>
 <p>The same numbers ride along in the CXSMILES, anchored to labels:</p>
@@ -206,7 +206,7 @@ constrain(a+b+c+d+e=14);dbPos(sn1:5@100,8@100,12@100,14@50,15@50);mPos(sn1:11OH@
 </ul>
 <p>See <a href="stage3.html">Acyl-chain analysis</a> for how candidates are retained and why the default changed.</p>
 <p>Consensus percentages apply <strong>per chain</strong> and are independent of sn-position ambiguity:</p>
-<pre><code>PC 16:0_18:1 [DB sn2: Δ9 80%, Δ11 20%]
+<pre><code>PC 16:0_18:1 [C=C sn2: Δ9 80% or Δ11 20%]
    ↑                    ↑
    │                    └─ within that chain, Δ9 is favoured 4:1 over Δ11
    └─ which chain is sn-1 vs sn-2 was not determined</code></pre>

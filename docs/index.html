@@ -820,14 +820,14 @@ footer p { margin: 0; }
           Hierarchical, traceable, all-isomers annotation of MS1, CID, EAD, UVPD, OAD, and OzID spectra. Rust-based. Runs as a Docker container.
         </p>
         <ul class="hero-features">
-          <li><strong>Truly untargeted:</strong> includes built-in library spanning 49 lipid classes, including rare chain lengths and oxidised forms for >3 Mio unique compounds</li>
-          <li><strong>Multi-method structural elucidation</strong> using CID, EAD, UVPD, OAD, and OzID libraries</li>
+          <li><strong>Truly untargeted:</strong> a <a href="library.html">built-in library</a> spanning 49 lipid classes, including rare chain lengths and oxidised forms, for &gt;3 Mio unique compounds</li>
+          <li><strong>Multi-method structural elucidation</strong> using CID for identity, and <a href="stage3.html">EAD, UVPD, OAD, and OzID</a> for positional detail</li>
           <li><strong>Hierarchical elucidation</strong> from species-level composition to positionally resolved double bonds and acyl-chain modifications</li>
-          <li><strong>Traceable scores and fragment evidence at every level.</strong> Resolvability analysis accounts for fragment selectivity and lowers the annotation level when discriminating evidence is insufficient</li>
-          <li><strong>Posterior scoring</strong> turns competing structures into probabilities, retains a credible set, reports confidence for each position, and preserves uncertainty instead of forcing a winner</li>
-          <li><strong>Self-tuning retention-time validation</strong> learns class-specific behaviour from confident annotations in each run to remove spurious matches, with optional external anchors</li>
-          <li>Provides <strong>CXSMILES for identifications and matched fragments,</strong> keeping structures and their evidence machine-readable</li>
-          <li>Adheres to <strong>lipid shorthand notation</strong> (Liebisch et al, JLR, 2020) and <strong>lipidomics data quality scoring</strong> (Hoffmann et al, JLR, 2025)</li>
+          <li><strong>Never claims more than the spectrum can prove.</strong> <a href="scoring.html">Resolvability analysis</a> checks whether discriminating fragments were actually observed, and honestly reports the lower idlevel when they weren't</li>
+          <li><strong>Calibrated, checkable scoring, not a black box.</strong> <a href="scoring.html">Posterior selection</a> turns competing structures into probabilities, keeps a credible set instead of forcing one winner, and is tested against chemically impossible decoys rather than trusted on faith</li>
+          <li><strong>Self-tuning <a href="rt.html">retention-time validation</a></strong> learns class-specific behaviour from confident annotations in each run to remove spurious matches, with optional external anchors</li>
+          <li>Provides <strong><a href="nomenclature.html">CXSMILES</a> for identifications and matched fragments,</strong> keeping structures and their evidence machine-readable</li>
+          <li>Adheres to <strong><a href="nomenclature.html">lipid shorthand notation</a></strong> (Liebisch et al, JLR, 2020) and <strong><a href="scoring.html">lipidomics data quality scoring</a></strong> (Hoffmann et al, JLR, 2025)</li>
           <li><strong>An interactive dashboard</strong> for quick quality control, result exploration, and spectrum-level evidence review</li>
         </ul>
         <p>
@@ -962,7 +962,7 @@ footer p { margin: 0; }
         <p>Unlike most other lipidomics software, which relies on matching expected fragments, <strong>LipidOracle also checks for specificity</strong>. At Stage 2 and 3, LipidOracle enumerates and scores all possible isomers. It checks whether the MS2 spectrum can indeed resolve the isomers, and if not, it reports the lower <code>idlevel</code> that is supported by the data. This analysis takes into account the specificity of the MS2 fragments, and ensures that details on acyl-chain lengths, positions, and modifications are reported only when discriminating fragments were detected.
         </p>
         <p>
-          The basis of the hierarchical annotation is provided by the <a href="library.html">built-in library</a>.
+          The basis of the hierarchical annotation is provided by the <a href="library.html">built-in library</a>. See <a href="scoring.html">Scoring, thresholds, and honest reporting</a> for exactly how those scores, thresholds, and resolvability checks work, and how that differs from a typical lipidomics workflow.
         </p>
       </div>
 
@@ -1060,7 +1060,7 @@ footer p { margin: 0; }
       <div class="sec-head">
         <h2>Report ambiguous data faithfully</h2>
         <p>
-          Multiple candidates often tie for the same score, or score within noise of each other. Rather than arbitrarily picking one, LipidOracle reports the ambiguity itself: CXSMILES depictions show every surviving candidate and the confidence score for each.
+          Multiple candidates often tie for the same score, or score within noise of each other. Rather than arbitrarily picking one, LipidOracle reports the ambiguity itself: CXSMILES depictions show every surviving candidate and the confidence score for each. See <a href="scoring.html">Scoring, thresholds, and honest reporting</a> for what "tie" actually means here, and why a single best-scoring candidate is never enough on its own.
         </p>
         <p>
           Names follow <strong>Shorthand 2020</strong> (Liebisch et al.) exactly — positional modifiers as <code>;11OH</code>, legacy spellings normalised on input — and structures are emitted as extended CXSMILES validated against CDK. See <a href="nomenclature.html">Nomenclature and CXSMILES</a>.
@@ -1182,6 +1182,10 @@ footer p { margin: 0; }
         <a class="doclink" href="stage3.html">
           <span class="doclink-name">Stage 3: acyl-chain analysis</span>
           <span class="doclink-desc">Locating double bonds and oxygen along each chain by EAD, UVPD, OAD, or OzID, and the limits of that call.</span>
+        </a>
+        <a class="doclink" href="scoring.html">
+          <span class="doclink-name">Scoring, thresholds, and honest reporting</span>
+          <span class="doclink-desc">What the scores mean, how thresholds are set and checked, and how this differs from a typical lipidomics workflow.</span>
         </a>
         <a class="doclink" href="nomenclature.html">
           <span class="doclink-name">Nomenclature and CXSMILES</span>
