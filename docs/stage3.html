@@ -144,7 +144,7 @@
 <tr><td>Confidence tail reports</td><td>per-position marginal probabilities</td><td>vote counts over the kept set</td></tr>
 </tbody>
 </table>
-<p>The temperature (<code>s3_post_temperature</code>) is fitted, not chosen: swept against known positions on two reference sets, 0.01 maximises discrimination while keeping calibration error low. Score gaps are taken relative to the top score, so one temperature is meaningful for both engines even though their raw scores differ by orders of magnitude.</p>
+<p>The softmax temperature is fitted, not chosen, and is no longer one shared value: <code>s3_post_temperature_ead1</code> (<code>0.03</code>) and <code>s3_post_temperature_ead2</code> (<code>0.003</code>) were fitted separately per engine — ead1 already has its own assertion gate doing the selecting, so it stays close to its original, better-calibrated value, while ead2 has no gate of its own and needs a sharper posterior to avoid under-covering oxidised, positionally-dense chains. <code>s3_post_temperature</code> (<code>0.01</code>) remains shared across oad, ozid, and uvpd, none of which have their own fitted value yet. Score gaps are taken relative to the top score in every case, so a temperature is meaningful across engines whose raw scores differ by orders of magnitude even though its fitted value isn't shared.</p>
 <p>The trade is coverage against correctness. Measured on a mono-hydroxy reference set with ead2, <code>legacy</code> asserts a C=C position on 84 of 96 features and is right on 55 (65%); <code>posterior</code> asserts 55 and is right on 40 (73%). <code>legacy</code> remains available for reproducing earlier results.</p>
 <h2>Configuration</h2>
 <p>Every stage-3 parameter is prefixed <code>s3_</code> &mdash; after the stage that owns it, not the ID level it reports. The former <code>ead_*</code> and <code>include_ms1_monochain</code> spellings are still accepted, so existing configs load unchanged.</p>
@@ -170,33 +170,38 @@
 </tr>
 <tr>
 <td><code>s3_max_candidates</code></td>
-<td><code>10000</code></td>
-<td>Candidates scored before stride-sampling. Raise to 30000 for oxidised work.</td>
+<td><code>100000</code></td>
+<td>Candidates scored before stride-sampling kicks in</td>
 </tr>
 <tr>
-<td><code>s3_max_output</code></td>
-<td><code>20</code></td>
-<td>Candidates written to <code>diag/annotation_idlevel3.csv</code> per feature</td>
+<td><code>s3_output_max</code></td>
+<td><code>100</code></td>
+<td>Reported/credible candidates written to <code>diag/annotation_stage3.csv</code> per feature, plus up to <code>s3_output_extra</code> further non-kept rows for context</td>
 </tr>
 <tr>
-<td><code>s3_min_score</code></td>
+<td><code>s3_legacy_min_score</code></td>
 <td><code>0.2</code></td>
-<td>Absolute <code>score_s3</code> floor, applied after normalisation</td>
+<td>Absolute <code>score_s3</code> floor, <code>s3_selection: legacy</code> only. Compared against whatever <code>s3_score_rescaling</code> produces — a no-op at the default <code>'none'</code> scale, since raw scores rarely sit near <code>[0, 1]</code>.</td>
+</tr>
+<tr>
+<td><code>s3_score_rescaling</code></td>
+<td><code>none</code></td>
+<td>Floor/span rescale of the raw score into <code>score_s3</code>, <code>legacy</code> selection only, uniform across all five engines: <code>none</code> (raw score as-is), <code>mad</code>, <code>median-max</code>, <code>min-max</code>. Does not apply under <code>posterior</code>, where <code>score_s3</code> is the posterior probability instead.</td>
 </tr>
 <tr>
 <td><code>s3_min_margin</code></td>
 <td><code>0.05</code></td>
-<td>Minimum relative gap between the best two candidates before idlevel 4 names a position (ead1, oad, and ozid)</td>
+<td>Minimum relative gap between the best two candidates before idlevel 4 names a position. Applied by ead1, oad, and uvpd always; by ead2 only when <code>s3_ead2_gate_margin</code> is turned on (off by default); by ozid always, in place of the matched-peak check below.</td>
 </tr>
 <tr>
 <td><code>s3_min_matched</code></td>
 <td><code>3</code></td>
-<td>Minimum peaks the winner must have matched for that gap to count (ead1 and oad)</td>
+<td>Minimum peaks the winner must have matched for that gap to count. Applied by ead1, oad, and uvpd always; by ead2 only when <code>s3_ead2_gate_margin</code> is on. Not used by ozid, which requires a complete aldehyde/Criegee pair instead.</td>
 </tr>
 <tr>
 <td><code>s3_intensity_scaling</code></td>
 <td><code>none</code></td>
-<td>Compressive transform on matched intensity (ead2 only): <code>none</code>, <code>sqrt</code>, <code>log10</code>, <code>ln</code>, <code>log2</code>. ead1 and oad always apply <code>sqrt</code> as part of their models.</td>
+<td>Compressive transform on matched intensity, shared across ead1, ead2, oad, and uvpd (ozid has no intensity-weighted score term): <code>none</code>, <code>sqrt</code>, <code>log10</code>, <code>ln</code>, <code>log2</code>. ead1 was fitted assuming <code>sqrt</code> weighting — set it explicitly to use that fit, since the shared default is <code>none</code>.</td>
 </tr>
 <tr>
 <td><code>s3_include_ms1_monochain</code></td>
@@ -222,11 +227,6 @@
 <td><code>ozid_formula_mz_tolerance</code></td>
 <td><code>0.01</code></td>
 <td>Allowed formula/adduct precursor-mass disagreement in Da; inconsistent formulas fail closed</td>
-</tr>
-<tr>
-<td><code>db_n_notation</code></td>
-<td><code>False</code></td>
-<td>Legacy switch: render positions in the confidence tail as <code>n-x</code>. Canonical Shorthand2020 names always use Δ.</td>
 </tr>
 </tbody>
 </table>
@@ -256,9 +256,19 @@
 <td>Posterior mass a single placement needs before its positions enter the idlevel-4 name</td>
 </tr>
 <tr>
+<td><code>s3_post_odds_floor</code></td>
+<td><code>0.125</code></td>
+<td>Likelihood-ratio floor on credible-set membership: a candidate drops out once its own probability falls below this fraction of the top candidate's, even short of <code>s3_post_credible_level</code>. Fitted for ead2; <code>0.0</code> disables it.</td>
+</tr>
+<tr>
+<td><code>s3_post_temperature_ead1</code> / <code>_ead2</code></td>
+<td><code>0.03</code> / <code>0.003</code></td>
+<td>Softmax temperature, fitted separately per engine (see below)</td>
+</tr>
+<tr>
 <td><code>s3_post_temperature</code></td>
 <td><code>0.01</code></td>
-<td>Softmax temperature. Fitted against known positions — change it only with a re-fit.</td>
+<td>Softmax temperature shared by oad, ozid, and uvpd, which have no fitted value of their own yet</td>
 </tr>
 <tr>
 <td><code>s3_legacy_cutoff</code></td>
@@ -267,7 +277,7 @@
 </tr>
 </tbody>
 </table>
-<p><strong><code>s3_max_candidates</code> deserves particular care.</strong> A single oxidised token such as <code>20:4;O</code> enumerates roughly 22,300 candidates. If the cap sits below that, the true structure can be stride-sampled out of consideration <em>before scoring ever runs</em>. The failure is silent and looks identical to a scoring failure in the output. The default of 10,000 suits non-oxidised chains; raise it to 30,000 for oxidised work.</p>
+<p><strong><code>s3_max_candidates</code> deserves particular care.</strong> A single oxidised token such as <code>20:4;O</code> enumerates roughly 22,300 candidates; a di-oxidised one such as <code>20:3;O2</code> enumerates roughly 74,700. If the cap sits below that, the true structure can be stride-sampled out of consideration <em>before scoring ever runs</em>. The failure is silent and looks identical to a scoring failure in the output — it is how a real, checked-in fixture lost its correct answer before this default was raised. <code>s3_n_isomers_total</code> in the stage-3/4 CSVs reports the full, un-sampled space next to the number actually scored; when they differ, the search was truncated. The default (<code>100000</code>) still does not fully cover the di-oxidised case, but the sampling order thins double-bond placements first, so every oxygen hypothesis is still scored regardless.</p>
 <h2>How positions are reported</h2>
 <p>An idlevel-4 name carries a confidence tail listing each position and the support behind it, and the same numbers ride along in the CXSMILES trailer as <code>dbPos(...)</code> / <code>mPos(...)</code> tokens:</p>
 <pre><code>FA 20:4;11OH [C=C: Δ5 100%, Δ8 100%, Δ12 100% | Δ14 50% or Δ15 50%; OH: 11 100%]
