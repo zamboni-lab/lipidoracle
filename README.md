@@ -8,10 +8,6 @@ retention-time validation, and C=C / oxidation localisation from EAD or UVPD dat
 This repository holds the documentation site and the test data. The engine ships
 as a Docker image.
 
-**Latest release: v1.0.180** — Shorthand 2020 nomenclature throughout, fixed
-CXSMILES support, posterior thresholding for candidate retention, and Lipid Data Quality scoring implemented. See
-[WHATSNEW.md](WHATSNEW.md).
-
 Using an AI coding agent? See [AGENTS.md](AGENTS.md) — the repository carries a
 LipidOracle skill that teaches agents the full Docker workflow, the parameter
 file, and how to read the outputs.
