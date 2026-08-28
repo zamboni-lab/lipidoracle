@@ -50,7 +50,7 @@ Two ready-to-run datasets in `testdata/`:
 | Folder | Spectra | Size | Notes |
 | --- | ---: | ---: | --- |
 | `cid/` | 9,948 | 32 MB | CID run, annotation to idlevel 1–2. Completes in seconds. |
-| `ead/` | 38,255 | 12 MB | EAD run. Set `acyl_analysis: ead1` to localise C=C. |
+| `ead/` | 38,255 | 12 MB | EAD run. Set `stage3: ead1` to localise C=C. |
 
 ## License
 
