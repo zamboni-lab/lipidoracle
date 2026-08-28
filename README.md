@@ -8,6 +8,17 @@ retention-time validation, and C=C / oxidation localisation from EAD or UVPD dat
 This repository holds the documentation site and the test data. The engine ships
 as a Docker image.
 
+## Guides
+
+- [Run LipidOracle](docs/running-lipidoracle.md) - installation, MGF preparation, a minimum configuration, and custom libraries.
+- [YAML configuration reference](docs/yaml-configuration.md) - start with the `WORKFLOW` section, then tune `PARAM` only when needed.
+- [Built-in library](docs/built-in-library.md) - internal library scope, rarity, adducts, and optional external libraries.
+- [MS1 and MS2 matching](docs/ms1-ms2-matching.md) - annotation levels, scoring, thresholds, and chain resolvability.
+- [Stage 3 with EAD](docs/stage3-ead.md) - C=C and oxygen-site localization, candidate selection, and confidence reporting.
+- [Oxidation analysis](docs/oxidation.md) - what MS1, MS2, and EAD2 can and cannot establish for oxygenated lipids.
+- [Retention-time checking](docs/retention-time.md) - LiRI, HYDRA, legacy filtering, and RT reference files.
+- [Outputs and dashboard](docs/outputs-dashboard.md) - CSV exports, diagnostic files, and interactive review.
+
 Using an AI coding agent? See [AGENTS.md](AGENTS.md) — the repository carries a
 LipidOracle skill that teaches agents the full Docker workflow, the parameter
 file, and how to read the outputs.
