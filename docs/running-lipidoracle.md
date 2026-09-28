@@ -12,7 +12,13 @@ Docker is the simplest reproducible option. Pull the current image:
 docker pull zambonilab/lipidoracle
 ```
 
-Make separate local input and output folders. Put one `.mgf` file in the input folder. The container wrapper uses `/input` and `/output` by default. You can use any two folders, even the same one, and simply map the local folder to the expected mounts for the linux system embedded in the Docker container with `-v`:
+Put one `.mgf` file in an input folder, and make a separate output folder. The container
+wrapper uses `/input` and `/output` by default:
+
+The two folders have to be different. The run writes its own copy of the configuration into
+`/output`, so mapping one folder to both places overwrites the `lipidoracle.yaml` it was about to
+read; the wrapper then falls back to the default workflow, annotates nothing, and every count in
+`summary.csv` is zero.
 
 ```bash
 docker run --rm \
@@ -21,7 +27,18 @@ docker run --rm \
   zambonilab/lipidoracle
 ```
 
-On the first execution, the wrapper writes `lipidoracle.yaml` to the output folder and stops so it can be reviewed. Run the same command again after editing the file. To use different mounted locations, set `INPUT` and `OUTPUT` environment variables for the wrapper instead of passing duplicate `--input` or `--output` flags:
+If `lipidoracle.yaml` is in the input folder, it is used and the run annotates straight away, which
+is how the paper's benchmarks are laid out. Otherwise the first execution writes a fully commented
+default to the output folder and stops so it can be reviewed; run the same command again after
+editing it.
+
+One spectrum is annotated per run. With several `.mgf` files in the input folder the run takes the
+first in alphabetical order, so give each spectrum its own folder, or name the file with
+`-e INPUT=/input/<name>.mgf`. Any file the configuration names, such as a custom library or an RT
+reference, has to sit beside it in the input folder or be a path that exists in the container.
+
+To use different mounted locations, set `INPUT` and `OUTPUT` environment variables for the wrapper
+instead of passing duplicate `--input` or `--output` flags:
 
 ```bash
 docker run --rm \
@@ -98,7 +115,7 @@ Precursor records within ±0.002 Da and ±0.5 seconds are deduplicated during im
 Save the following as `lipidoracle.yaml` next to the MGF. This is a minimal routine MS1/MS2 run. `PARAM: {}` is intentional: it activates the individual documented parameter defaults while keeping the example minimal.
 
 ```yaml
-VERSION: 1.0.246
+VERSION: 1.0.267
 
 WORKFLOW:
   lipidoracle: true

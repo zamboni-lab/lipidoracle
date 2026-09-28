@@ -280,14 +280,12 @@ PARAM:                          # Numeric and threshold parameters
 </tr>
 <tr>
 <td><code>s3_max_candidates</code></td>
-<td>int</td>
-<td><code>10000</code></td>
-<td>Candidates scored before stride-sampling. Raise to 30000 for oxidised work — a single <code>20:4;O</code> token enumerates ~22,300 candidates, and below that the true structure can be sampled out silently. See <a href="stage3.html">Acyl-chain analysis</a>.</td>
+<td>int</td><td><code>100000</code></td>
+<td>Candidates scored before stride-sampling. Raise it further for oxidised work — a single <code>20:4;O</code> token enumerates ~22,300 candidates, and below that the true structure can be sampled out silently. See <a href="stage3.html">Acyl-chain analysis</a>.</td>
 </tr>
 <tr>
-<td><code>s3_max_output</code></td>
-<td>int</td>
-<td><code>20</code></td>
+<td><code>s3_output_max</code></td>
+<td>int</td><td><code>100</code></td>
 <td>Candidates written to <code>diag/annotation_idlevel3.csv</code> per feature</td>
 </tr>
 <tr>
@@ -298,8 +296,7 @@ PARAM:                          # Numeric and threshold parameters
 </tr>
 <tr>
 <td><code>s3_min_margin</code></td>
-<td>float</td>
-<td><code>0.05</code></td>
+<td>float</td><td><code>0.0</code></td>
 <td>Minimum relative gap between the two best candidates before idlevel 4 names a position (<code>ead1</code>, <code>oad</code>, and <code>ozid</code>). Fitted against known positions for EAD; OAD and OzID calibration remains provisional.</td>
 </tr>
 <tr>

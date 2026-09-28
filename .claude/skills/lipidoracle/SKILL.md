@@ -104,7 +104,7 @@ Then `study.get_id()`, `study.id_select(score=(0.8, 1.0))`, and
 ### 1. Pull the image
 
 ```bash
-docker pull zambonilab/lipidoracle
+docker pull zambonilab/lipidoracle:1.0.267
 ```
 
 Version 1.0+ is a Rust rewrite. The old Python implementation is
@@ -117,7 +117,7 @@ its configs with 1.0.
 docker run --rm \
   -v /abs/path/to/input:/input \
   -v /abs/path/to/output:/output \
-  zambonilab/lipidoracle
+  zambonilab/lipidoracle:1.0.267
 ```
 
 If no `lipidoracle.yaml` exists in the input or output folder, LipidOracle
@@ -161,7 +161,7 @@ The entrypoint forwards arguments to the binary. Useful ones:
 
 ```bash
 docker run --rm -v /abs/in:/input -v /abs/out:/output \
-  zambonilab/lipidoracle --polarity neg --quiet
+  zambonilab/lipidoracle:1.0.267 --polarity neg --quiet
 ```
 
 | Flag | Meaning |

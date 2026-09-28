@@ -32,7 +32,7 @@ and MS2 scans go in one file, tagged with `MSLEVEL`.
 Then put that single `.mgf` in a folder, pick an output folder, and run:
 
 ```bash
-docker run --rm -v /abs/in:/input -v /abs/out:/output zambonilab/lipidoracle
+docker run --rm -v /abs/in:/input -v /abs/out:/output zambonilab/lipidoracle:1.0.267
 ```
 
 The first run writes a commented `lipidoracle.yaml` into the output folder and

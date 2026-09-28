@@ -71,7 +71,7 @@
   rt_ref: '/output/rt_ref.csv' # Optional external RT anchor file
 
 PARAM:
-  rt_deviation_cutoff: 0.10    # final generic-formula check; fraction or seconds
+  rt_deviation_cutoff: 0.15    # final generic-formula check; fraction or seconds
 </code></pre>
 <p>Exactly one engine runs. The value is case-insensitive, and an unrecognised string fails configuration validation rather than silently disabling the check. Every engine works without any external reference — <code>rt_ref</code> is optional, purely to sharpen the fit. <code>WORKFLOW.is_peaks</code> is a separate setting that supplies internal-standard peaks; it is not an RT-check parameter.</p>
 <h2>Pipeline order</h2>

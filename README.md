@@ -6,7 +6,7 @@ retention-time validation, and C=C / oxidation localisation from EAD or UVPD dat
 **Documentation: <https://zamboni-lab.github.io/lipidoracle/>**
 
 This repository holds the documentation site and the test data. The engine ships
-as a Docker image.
+as the Docker image `zambonilab/lipidoracle:1.0.267`; [Run LipidOracle](docs/running-lipidoracle.md) has the two-mount command and what the image does with its input and output folders.
 
 ## Guides
 
@@ -51,6 +51,25 @@ Two ready-to-run datasets in `testdata/`:
 | --- | ---: | ---: | --- |
 | `cid/` | 9,948 | 32 MB | CID run, annotation to idlevel 1–2. Completes in seconds. |
 | `ead/` | 38,255 | 12 MB | EAD run. Set `stage3: ead1` to localise C=C. |
+
+## Paper data
+
+`paperdata/` holds the input files behind the four benchmarks of the LipidOracle paper, ready to
+re-run: the spectra each benchmark was acquired on, with the configuration it ran under - human
+plasma by CID, the EAD lipid standards in two acquisitions, the EAD mouse liver, and the UVPD
+standards. Nothing else is in there; the results and the scoring references live with the paper's
+data record.
+
+Each folder is flat and self-contained, so a configuration finds the files it names when the
+engine is run from that folder. `paperdata/README.md` gives the docker command, the one line per
+benchmark that changes, and where the spectra come from.
+
+```bash
+docker run --rm \
+  -v <INPUT-FOLDER>:/input \
+  -v <OUTPUT-FOLDER>:/output \
+  zambonilab/lipidoracle:1.0.267
+```
 
 ## License
 
