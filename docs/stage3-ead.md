@@ -78,7 +78,7 @@ For oxygenated hypotheses, `s3_oxo_rarity_prior` multiplies a candidate score fo
 
 ![Example oxygenated diacyl-glycerol positional representation](img/07_dg_180_182_oh5_sg.png)
 
-## Candidate selection and `score_s3`
+## Candidate selection and `s3_score`
 
 The recommended path is posterior selection:
 
@@ -105,9 +105,9 @@ p_i = softmax(((raw_i - raw_max) / abs(raw_max)) / temperature)
 - A position appears in the level-4 name only if its marginal posterior mass reaches `s3_post_min_mass`.
 - `s3_output_max` caps written level-3 rows but not the evidence set used for level-4 aggregation. `s3_output_extra` adds a few non-kept rows for context.
 
-With `posterior`, `score_s3` is candidate posterior probability over the complete generated candidate set. Exported rows need not sum to 1 because low-probability unreported candidates remain absent. `score_s3_raw` retains the underlying unnormalized score.
+With `posterior`, `s3_score` is candidate posterior probability over the complete generated candidate set. Exported rows need not sum to 1 because low-probability unreported candidates remain absent. `s3_score_raw` retains the underlying unnormalized score.
 
-`legacy` selection retains candidates within `s3_legacy_cutoff` of the top score. In that mode `score_s3` is a rescaled or raw score, not a probability. Use it only when reproducing a legacy protocol.
+`legacy` selection retains candidates within `s3_legacy_cutoff` of the top score. In that mode `s3_score` is a rescaled or raw score, not a probability. Use it only when reproducing a legacy protocol.
 
 ## Resolvability and confidence language
 
@@ -119,6 +119,6 @@ The interpretation is deliberately conservative:
 - A level-4 positional name is an aggregate assertion that passed the engine's naming rule.
 - A level-4 result without a localized position is not a failure. It is the correct outcome when the spectrum does not separate valid isomers.
 
-Inspect `diag/annotation_stage3.csv`, `diag/annotation_stage4.csv`, `diag/s3_resolvability.csv`, `score_s3_raw`, `score_s3`, `s3_kept`, and the dashboard spectrum view before interpreting biology from a localization call.
+Inspect `diag/annotation_stage3.csv`, `diag/annotation_stage4.csv`, `diag/s3_resolvability.csv`, `s3_score_raw`, `s3_score`, `s3_kept`, and the dashboard spectrum view before interpreting biology from a localization call.
 
 For oxidation-specific chemistry, constraints, and cautions, read [Oxidation analysis](oxidation.md).

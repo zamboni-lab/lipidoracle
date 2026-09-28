@@ -38,7 +38,7 @@ For every candidate arrangement, LipidOracle predicts expected fragments with po
 The stage-2 score is:
 
 ```text
-score_s2 = 0.75 × (matched_weight − 2 × exclusion_penalty) / total_weight
+s2_score = 0.75 × (matched_weight − 2 × exclusion_penalty) / total_weight
          + 0.25 × (matched_intensity / total_intensity)
 ```
 
@@ -105,7 +105,7 @@ The chain posterior fields `top_prob` and `cred95` are diagnostic only. `s2_chai
 For a stage-2 result, verify in this order:
 
 1. Correct polarity, precursor *m/z*, adduct, and mass error.
-2. Class/headgroup evidence and `score_s2`.
+2. Class/headgroup evidence and `s2_score`.
 3. Chain-specific fragments and `rival_resolvability`.
 4. Whether `/` versus `_` honestly reflects *sn* evidence.
 5. RT plausibility and duplicate/consistency outcomes.

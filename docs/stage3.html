@@ -83,7 +83,7 @@
 </code></pre>
 <p>This step is off by default. Select the engine matching the acquisition method: EAD, UVPD, OAD, or OzID. It cannot extract positional information from ordinary CID spectra.</p>
 <h2>The engines</h2>
-<p>The <code>score_s3</code> column carries the localisation score, and <code>score_s3_data</code> and <code>ms2_evidence</code> record the supporting evidence. The engines are intensity-aware, but differ in their fragment-mass model, intensity transform, and eligible chemistry. <strong>Equal <code>score_s3</code> values from different engines are not equivalent evidence</strong> and should not be compared across runs configured differently. For what <code>score_s3</code> does and doesn't tell you on its own, and why a high score alone is never proof of a determined position, see <a href="scoring.html">Scoring, thresholds, and honest reporting</a>.</p>
+<p>The <code>s3_score</code> column carries the localisation score, and <code>s3_score_data</code> and <code>ms2_evidence</code> record the supporting evidence. The engines are intensity-aware, but differ in their fragment-mass model, intensity transform, and eligible chemistry. <strong>Equal <code>s3_score</code> values from different engines are not equivalent evidence</strong> and should not be compared across runs configured differently. For what <code>s3_score</code> does and doesn't tell you on its own, and why a high score alone is never proof of a determined position, see <a href="scoring.html">Scoring, thresholds, and honest reporting</a>.</p>
 <h3>ead1: Fixed ladder, non-oxidised</h3>
 <p>ead1 implements the published method, described in full in Wu et al, <em>Analyst</em>, 2025, <a href="https://doi.org/10.1039/d5an00567a">10.1039/d5an00567a</a>. For the experimental background, why EAD cleaves bonds that CID leaves intact and what the resulting fragment ladder looks like, see <a href="https://metabolomics.blog/2024/04/ead-and-lipidomics/">On the benefits and role of electron-induced dissociation in lipidomics</a>.</p>
 <p>It runs in four steps:</p>
@@ -132,7 +132,7 @@
 <p>OzID preprocessing retains ions above the precursor and applies only <code>ms2_noise_abs</code>, not the global percentile filter <code>ms2_noise_prc</code>. A percentile threshold can otherwise discard the weaker member of a chemically required pair before formula-aware matching. Deuterated standards additionally require <code>remove_d: False</code>, and stage 3 still requires an eligible molecular-species parent from stage 2.</p>
 <p>OzID uses the shared posterior and credible-set selection (see <a href="scoring.html">Scoring, thresholds, and honest reporting</a>), but its resolvability test is pair-specific: the winner needs more complete site-exclusive diagnostic pairs than its best structurally distinct rival, not just a peak-count comparison. The optional allene null remains a diagnostic comparator. These are localization-confidence measures, not peptide-style target-decoy FDR or a claim of LipidOz-equivalent performance.</p>
 <h2>Choosing which candidates are reported</h2>
-<p>Selection is set by <code>PARAM.s3_selection</code> and is orthogonal to the engine — either method works with either engine, including on oxidised lipids. See <a href="scoring.html">Scoring, thresholds, and honest reporting</a> for why this decision exists at all (in short: <code>score_s3</code> alone cannot distinguish a decisive winner from a cluster of near-ties) and what it measures against to validate itself.</p>
+<p>Selection is set by <code>PARAM.s3_selection</code> and is orthogonal to the engine — either method works with either engine, including on oxidised lipids. See <a href="scoring.html">Scoring, thresholds, and honest reporting</a> for why this decision exists at all (in short: <code>s3_score</code> alone cannot distinguish a decisive winner from a cluster of near-ties) and what it measures against to validate itself.</p>
 <table>
 <thead>
 <tr><th></th><th><code>posterior</code> (default)</th><th><code>legacy</code> (formerly <code>cutoff</code>)</th></tr>
@@ -181,22 +181,22 @@
 <tr>
 <td><code>s3_legacy_min_score</code></td>
 <td><code>0.2</code></td>
-<td>Absolute <code>score_s3</code> floor, <code>s3_selection: legacy</code> only. Compared against whatever <code>s3_score_rescaling</code> produces — a no-op at the default <code>'none'</code> scale, since raw scores rarely sit near <code>[0, 1]</code>.</td>
+<td>Absolute <code>s3_score</code> floor, <code>s3_selection: legacy</code> only. Compared against whatever <code>s3_score_rescaling</code> produces — a no-op at the default <code>'none'</code> scale, since raw scores rarely sit near <code>[0, 1]</code>.</td>
 </tr>
 <tr>
 <td><code>s3_score_rescaling</code></td>
 <td><code>none</code></td>
-<td>Floor/span rescale of the raw score into <code>score_s3</code>, <code>legacy</code> selection only, uniform across all five engines: <code>none</code> (raw score as-is), <code>mad</code>, <code>median-max</code>, <code>min-max</code>. Does not apply under <code>posterior</code>, where <code>score_s3</code> is the posterior probability instead.</td>
+<td>Floor/span rescale of the raw score into <code>s3_score</code>, <code>legacy</code> selection only, uniform across all five engines: <code>none</code> (raw score as-is), <code>mad</code>, <code>median-max</code>, <code>min-max</code>. Does not apply under <code>posterior</code>, where <code>s3_score</code> is the posterior probability instead.</td>
 </tr>
 <tr>
 <td><code>s3_min_margin</code></td>
-<td><code>0.05</code></td>
-<td>Minimum relative gap between the best two candidates before idlevel 4 names a position. Applied by ead1, oad, and uvpd always; by ead2 only when <code>s3_ead2_gate_margin</code> is turned on (off by default); by ozid always, in place of the matched-peak check below.</td>
+<td><code>0.0</code></td>
+<td>Minimum relative gap between the best two candidates before idlevel 4 names a position. Applied by ead1, oad, and uvpd always; by ead2 only when <code>s3_ead2_gate_db_on_resolvability</code> is turned on (off by default); by ozid always, in place of the matched-peak check below.</td>
 </tr>
 <tr>
 <td><code>s3_min_matched</code></td>
 <td><code>3</code></td>
-<td>Minimum peaks the winner must have matched for that gap to count. Applied by ead1, oad, and uvpd always; by ead2 only when <code>s3_ead2_gate_margin</code> is on. Not used by ozid, which requires a complete aldehyde/Criegee pair instead.</td>
+<td>Minimum peaks the winner must have matched for that gap to count. Applied by ead1, oad, and uvpd always; by ead2 only when <code>s3_ead2_gate_db_on_resolvability</code> is on. Not used by ozid, which requires a complete aldehyde/Criegee pair instead.</td>
 </tr>
 <tr>
 <td><code>s3_intensity_scaling</code></td>

@@ -49,28 +49,6 @@ docker run --rm \
 
 The image includes runtime assets under `/data`, including the default YAML and library template. A custom library or RT-reference file must be available in the mounted filesystem, for example `/work/my_library.csv`.
 
-### Build from source
-
-The project requires a Rust toolchain compatible with the checked-in `rust-toolchain.toml`.
-
-```bash
-git clone https://github.com/zamboni-lab/lipidoracle-rs.git
-cd lipidoracle-rs
-cargo build --release
-./target/release/lipidoracle --help
-```
-
-Run a local build with:
-
-```bash
-./target/release/lipidoracle \
-  --input /path/to/sample.mgf \
-  --params /path/to/lipidoracle.yaml \
-  --output /path/to/results
-```
-
-`cargo run -- --input ... --output ...` is useful during development. `cargo test` runs the test suite.
-
 ## 2. Prepare the input data
 
 LipidOracle reads **Mascot Generic Format (MGF)**. One `BEGIN IONS` to `END IONS` block is one spectrum. The parser accepts these fields case-insensitively:
@@ -127,13 +105,16 @@ PARAM: {}
 
 The first run can omit `--params`: LipidOracle copies a full default configuration to the output folder, prints its location, and stops so it can be reviewed. The CLI otherwise first looks for `<output>/lipidoracle.yaml`, then a YAML file in the output or input directory.
 
-Run the example:
+Run the example, with `sample.mgf` and `lipidoracle.yaml` together in the input folder:
 
 ```bash
-lipidoracle -i sample.mgf -p lipidoracle.yaml -o results
+docker run --rm \
+  -v "$PWD/input:/input" \
+  -v "$PWD/results:/output" \
+  zambonilab/lipidoracle:1.0.267
 ```
 
-Useful CLI flags are `-d` or `--debug` for verbose logs, `-q` or `--quiet` for minimal progress output, and `--no-dashboard-single-file` to generate a split dashboard instead of the default self-contained `dashboard.html`.
+Useful flags, appended after the image name (for example `... zambonilab/lipidoracle:1.0.267 -d`): `-d` or `--debug` for verbose logs, `-q` or `--quiet` for minimal progress output, and `--no-dashboard-single-file` to generate a split dashboard instead of the default self-contained `dashboard.html`.
 
 ## 4. Routine run variants
 
@@ -224,6 +205,6 @@ Practical recommendations:
 - Add MS2 fragments only when precursor/adduct identity, polarity, and fragmentation mode are matched to the input data. A mismatched spectrum can increase false positives more than it improves coverage.
 - Include diagnostic fragments and meaningful relative weights. Avoid spectra dominated by precursor carryover or background.
 - Keep a changelog and version the library file. The output records library provenance, making a run reproducible only when the same library version is retained.
-- Review extra-library hits in the dashboard and compare `score_s2`, matched fragments, RT behavior, and ambiguity with internal-library results.
+- Review extra-library hits in the dashboard and compare `s2_score`, matched fragments, RT behavior, and ambiguity with internal-library results.
 
 See [Built-in library](built-in-library.md) for how extra libraries interact with the internal library, LipiDex, LipidBlast, rarity, and adduct settings.

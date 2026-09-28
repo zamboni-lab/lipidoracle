@@ -78,7 +78,7 @@ EAD2 generates candidate-specific chain-cleavage masses, matches them within `ms
 
 A single observed peak may support more than one predicted EAD2 fragment. Therefore, a top raw score alone is insufficient to interpret as unique positional proof. Candidate selection and aggregation are central:
 
-- Under `s3_selection: posterior`, `score_s3` is a posterior probability over the closed candidate set. The smallest candidate set reaching `s3_post_credible_level` is retained.
+- Under `s3_selection: posterior`, `s3_score` is a posterior probability over the closed candidate set. The smallest candidate set reaching `s3_post_credible_level` is retained.
 - `s3_post_min_mass` controls whether the level-4 consensus may name an oxygen or C=C placement.
 - `s3_oxo_rarity_prior` applies a multiplicative penalty per asserted ketone. Its default value, `0.85`, makes an oxo hypothesis require stronger fragment support than an isobaric hydroxyl alternative.
 - `s3_report_position_tuples: true` can keep coupled placement alternatives legible instead of reporting only independent positional marginals.
@@ -109,6 +109,6 @@ Use the most specific wording that matches the evidence:
 - **EAD2 level 3:** “supported positional candidate” or “credible positional isomer”.
 - **EAD2 level 4:** “consensus positional assignment”, only when the reported posterior/selection and assertion rules are met.
 
-Avoid describing `score_s3` as an instrument-independent probability of a biological structure. It is conditional on the generated candidate space, the selected EAD2 scoring model, the configuration, and the input spectrum.
+Avoid describing `s3_score` as an instrument-independent probability of a biological structure. It is conditional on the generated candidate space, the selected EAD2 scoring model, the configuration, and the input spectrum.
 
 For the complete stage-3 workflow and all selection parameters, see [Stage 3 with EAD](stage3-ead.md).

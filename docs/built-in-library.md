@@ -93,7 +93,7 @@ For authoring a custom CSV and considering optional MS2 reference spectra, see [
 2. Restrict adducts to the chromatographic and ion-source conditions used.
 3. Add project-specific records in a separate, versioned extra-library CSV.
 4. Confirm that custom records have formula, neutral mass, adducts, and nomenclature that agree.
-5. Inspect source, `score_s2`, matched fragments, resolvability, and RT for every non-routine call.
+5. Inspect source, `s2_score`, matched fragments, resolvability, and RT for every non-routine call.
 6. Do not compare raw stage-3 scores across EAD, OAD, UVPD, and OzID. Their candidate spaces and score scales differ.
 
 ## Built-in class and adduct coverage

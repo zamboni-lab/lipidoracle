@@ -41,7 +41,7 @@ This is the stable compact export intended for downstream tables, statistics, an
 | precursor *m/z*, RT, polarity, adduct | Acquisition and ion identity context. |
 | `name`, `species`, `class`, `formula` | Lipid annotation and chemical metadata. Names use Goslin Shorthand2020. |
 | `stage`, `idlevel` | Evidence and specificity of the result. |
-| `score_s1`, `score_s2`, `score_s3`, `score_s3_raw` | Stage-specific evidence values. Interpret them within their stage and engine. |
+| `score_s1`, `s2_score`, `s3_score`, `s3_score_raw` | Stage-specific evidence values. Interpret them within their stage and engine. |
 | `score_modcos` | Reference cosine-style MS2 value. It is not the selection score. |
 | `rival_resolvability` | Whether observed exclusive fragments separated the call from its best disagreeing rival. |
 | `rt_deviation` | Final generic formula-model RT deviation, not necessarily the selected RT engine's own error. |
@@ -70,7 +70,7 @@ The copied input MGF and effective `lipidoracle.yaml` are part of the result. A 
 | `diag/annotation_stage3.csv` | Which individual positional hypotheses were emitted? |
 | `diag/annotation_stage4.csv` | What positional consensus was reported? |
 
-With posterior stage-3 selection, `score_s3` is a probability over the generated closed candidate set. Written rows do not necessarily sum to 1 because the export contains the credible set and limited context rows, not the entire enumerated universe. With legacy selection, it is a raw or rescaled within-feature score rather than a probability.
+With posterior stage-3 selection, `s3_score` is a probability over the generated closed candidate set. Written rows do not necessarily sum to 1 because the export contains the credible set and limited context rows, not the entire enumerated universe. With legacy selection, it is a raw or rescaled within-feature score rather than a probability.
 
 ### Candidate and resolvability diagnostics
 
@@ -126,6 +126,6 @@ There is no universal numerical cutoff that turns all lipid annotations into gro
 - stage-3 selection parameters and treatment of ambiguous candidates;
 - validation with standards or orthogonal methods for high-impact structural claims.
 
-Do not compare raw `score_s3` values across EAD1, EAD2, OAD, UVPD, or OzID. Their chemistry, candidate sets, raw scores, and normalization differ. For feature-level quantification, keep the relationship between your original feature table and the MGF identifiers explicit.
+Do not compare raw `s3_score` values across EAD1, EAD2, OAD, UVPD, or OzID. Their chemistry, candidate sets, raw scores, and normalization differ. For feature-level quantification, keep the relationship between your original feature table and the MGF identifiers explicit.
 
 See [MS1 and MS2 matching](ms1-ms2-matching.md) and [Stage 3 with EAD](stage3-ead.md) for the evidence behind dashboard fields.
