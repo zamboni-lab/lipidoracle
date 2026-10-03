@@ -1,12 +1,14 @@
 # LipidOracle
 
-Lipid annotation from MS1 and MS2 spectra: accurate-mass matching, MS2 scoring,
-retention-time validation, and C=C / oxidation localisation from EAD or UVPD data.
+Lipid annotation from MS1 and MS2 spectra: accurate-mass matching, MS2 scoring, retention-time validation, C=C / oxidation localisation from EAD or UVPD data, etc.
+
+**Preprint: [LipidOracle: Ambiguity-aware lipid annotation across fragmentation methods](https://chemrxiv.org/doi/full/10.26434/chemrxiv.15009711/v1)**
 
 **Documentation: <https://zamboni-lab.github.io/lipidoracle/>**
 
-This repository holds the documentation site and the test data. The engine ships
-as the Docker image `zambonilab/lipidoracle:1.0.267`; [Run LipidOracle](docs/running-lipidoracle.md) has the two-mount command and what the image does with its input and output folders.
+This repository holds the documentation site and the test data. 
+
+The software ships as the Docker image `zambonilab/lipidoracle` as described in [Run LipidOracle](docs/running-lipidoracle.md).
 
 ## Guides
 
