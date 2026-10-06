@@ -1,7 +1,7 @@
-# paperdata — the input files behind the LipidOracle paper's four benchmarks
+# Files used in LipidOracle's paper
 
-Only what a run needs: the spectra, the configuration, and the couple of files a configuration
-reads. No results and no scoring references.
+The paper includes four benchmarks. This repository includes the the spectra as MGF, the configuration, and the couple of files a configuration
+reads. 
 
 ```
 01_plasma_cid_srm1950/   masster_pos_consensus.mgf, lipidoracle.yaml
