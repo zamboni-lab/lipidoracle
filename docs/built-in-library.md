@@ -73,6 +73,71 @@ The class table generated for your run reflects your oxidation policy:
 
 See [Oxidation analysis](oxidation.md) for the difference between oxygen-count evidence and EAD2 positional hypotheses.
 
+## Negative-mode library
+
+Negative-mode coverage comes from the `adducts_neg` entries of `data/lipids_definition.json`. The prior is the adduct's default weight (`adducts_neg_score`) and `rarity` is its adduct rarity (`adducts_neg_rarity`), shown only when non-zero. Only adducts that are also listed in `PARAM.adducts` are used in a run.
+
+- `[M-H]-` is defined for almost every class. Two exceptions: `MGDG` and `DGDG` use `[M+HCOO]-` as their primary channel (`[M-H]-` is a rarer alternative).
+- `[M+Ac-H]-`, `[M+FA-H]-`, and `[M-2H]2-` are in the default `PARAM.adducts`, but no class lists them under `adducts_neg`. Check the dashboard's **Lipid library** page for their effect in your run.
+- Some classes have no negative entry: `FA-AMPP`, `SB`, `CE`, `TG`, `DG`, and `MG`. They are not annotated in negative mode.
+- `HexCer`, `Hex2Cer`, `LacCer`, `Hex3Cer`, `Cer`, `Sph`, `NAE`, `ST`, `FA`, and `CAR` carry a reduced prior or rarity 1 for `[M-H]-`, so they rank below better-supported alternatives.
+- Ether-linked `PC`, `PE`, `LPC`, and `LPE` (`O-`/`P-`) have their own keys, with the same `[M-H]-` channel. `LPC` and `LPE` each cover both the sn-1 and sn-2 acyl regioisomer keys.
+
+| Class | Negative adducts (prior) | Carbon range | Max DB |
+| --- | --- | --- | --- |
+| `PC (O-)` | `[M-H]-` 1 | 12–60 | 8 |
+| `PC (P-)` | `[M-H]-` 1 | 12–60 | 8 |
+| `PE (O-)` | `[M-H]-` 1 | 12–60 | 8 |
+| `PE (P-)` | `[M-H]-` 1 | 12–60 | 8 |
+| `LPC (O-)` | `[M-H]-` 1 | 3–30 | 6 |
+| `LPC (P-)` | `[M-H]-` 1 | 3–30 | 6 |
+| `LPE (O-)` | `[M-H]-` 1 | 3–30 | 6 |
+| `LPE (P-)` | `[M-H]-` 1 | 3–30 | 6 |
+| `PI` | `[M-H]-` 1 | 12–60 | 8 |
+| `LPI` | `[M-H]-` 1 | 3–30 | 8 |
+| `PIP` | `[M-H]-` 1 | 2–60 | 8 |
+| `PIP2` | `[M-H]-` 1 | 12–60 | 8 |
+| `PIP3` | `[M-H]-` 1 | 12–60 | 8 |
+| `PA` | `[M-H]-` 1 | 3–60 | 8 |
+| `LPA` | `[M-H]-` 1 | 3–30 | 6 |
+| `LPG` | `[M-H]-` 1 | 3–30 | 6 |
+| `LPS` | `[M-H]-` 1 | 3–30 | 6 |
+| `BMP` | `[M-H]-` 1 | 12–60 | 6 |
+| `HexCer` | `[M-H]-` 0.5 (rarity 1) | 12–60 | 6 |
+| `Hex2Cer` | `[M-H]-` 0.5 (rarity 1) | 2–60 | 6 |
+| `LacCer` | `[M-H]-` 0.5 (rarity 1) | 12–60 | 6 |
+| `Hex3Cer` | `[M-H]-` 0.5 (rarity 1) | 12–60 | 6 |
+| `SHexCer` | `[M-H]-` 1 | 12–60 | 6 |
+| `CerP` | `[M-H]-` 1 | 12–60 | 6 |
+| `IPC` | `[M-H]-` 1 | 2–60 | 6 |
+| `MIPC` | `[M-H]-` 1 | 12–60 | 6 |
+| `MIP2C` | `[M-H]-` 1 | 12–60 | 6 |
+| `S1P` | `[M-H]-` 1 | 12–30 | 4 |
+| `MGDG` | `[M+HCOO]-` 1; `[M-H]-` 0.5 (rarity 1) | 12–60 | 6 |
+| `DGDG` | `[M+HCOO]-` 1; `[M-H]-` 0.5 (rarity 1) | 12–60 | 6 |
+| `SQDG` | `[M-H]-` 1 | 12–60 | 6 |
+| `GM3` | `[M-H]-` 1 | 12–60 | 6 |
+| `GM2` | `[M-H]-` 1 | 12–60 | 6 |
+| `GM1` | `[M-H]-` 1 | 12–60 | 6 |
+| `GD3` | `[M-H]-` 1 | 12–60 | 6 |
+| `GD2` | `[M-H]-` 1 | 12–60 | 6 |
+| `GD1` | `[M-H]-` 1 | 2–60 | 6 |
+| `GT1` | `[M-H]-` 1 | 12–60 | 6 |
+| `NAE` | `[M-H]-` 0.5 (rarity 1) | 3–30 | 6 |
+| `ST` | `[M-H]-` 0.3 (rarity 1) | 2–34 | 6 |
+| `FA` | `[M-H]-` 1 | 2–34 | 6 |
+| `CAR` | `[M-H]-` 0.5 (rarity 1) | 2–30 | 6 |
+| `PE` | `[M-H]-` 1 | 2–60 | 8 |
+| `LPE` | `[M-H]-` 1 | 2–30 | 6 |
+| `PC` | `[M-H]-` 1 | 2–60 | 8 |
+| `LPC` | `[M-H]-` 1 | 2–30 | 6 |
+| `PG` | `[M-H]-` 1 | 2–60 | 8 |
+| `PS` | `[M-H]-` 1 | 2–60 | 8 |
+| `Cer` | `[M-H]-` 0.5 (rarity 1) | 2–60 | 6 |
+| `Sph` | `[M-H]-` 0.5 (rarity 1) | 2–60 | 6 |
+| `SM` | `[M-H]-` 1 | 28–60 | 6 |
+| `CL` | `[M-H]-` 1 | 2–80 | 12 |
+
 ## Optional libraries
 
 Three optional sources can be added to the internal search:
