@@ -109,6 +109,18 @@ LipidOracle provides two UVPD acyl-chain engines:
   $C(sp^2)-C(sp^2)$ bond inside conjugated dienes, and localizes both unoxidized
   (`C=C`) and oxidized (`-OH`, `=O`) chains via Norrish Type I/II photolysis (see
   `dev/uvpd2.md`).
+- **`oad` and `oad2` (`src/stage3_oad.rs`)**: oxygen-attachment dissociation (OAD)
+  engines requiring OAD02 and OAD15 anchor ions per double bond (`oad2` adds
+  allylic/vinylic/homolytic chain cleavage ladders). Support pinned `PC [M+H]+`,
+  `TG [M+NH4]+`, and `SM [M+H]+` profiles plus class-analogy profiles across
+  glycerophospholipids (`PE`, `MMPE`, `DMPE`, `PS`, `PT`, `PG`, `BMP`, `PI`, `PA`,
+  `PMe`, `PEth`, `PGlc`, `PIM1`, `PIM2`, `CDP-DG`), glycerolipids/glycolipids
+  (`DG`, `MGDG`, `DGDG`, `SQDG`, `GlcADG`), betaine lipids (`DGTS`, `DGTA`, `DGCC`),
+  and sphingolipids (`Cer`, `CerPE`, `HexCer`, `Hex2Cer`/`LacCer`, `Hex3Cer`,
+  `SHexCer`, `IPC`/`PI-Cer`).
+- **`had` (`src/stage3_had.rs`)**: hydrogen-attachment dissociation (HAD) engine
+  scoring diagnostic aldehyde and alkene pair ions across glycerophospholipids,
+  glycerolipids/glycolipids, betaine lipids, sphingolipids, and fatty acyls.
 
 ## Deuterium-labelled standards
 

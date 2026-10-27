@@ -565,7 +565,7 @@
 <td>5</td>
 </tr>
 <tr>
-<td>Triacylglycerol</td>
+<td>Triacylglycerol (including ether-linked <code>TGo</code>/<code>TGp</code> keys)</td>
 <td>TG</td>
 <td><code>[M+NH4]+</code>; <code>[M+Na]+</code>; <code>[M+H]+</code>; <code>[M+K]+</code>; <code>[M+Li]+</code></td>
 <td>—</td>
@@ -573,6 +573,86 @@
 <td>14–60</td>
 <td>12</td>
 <td>461</td>
+</tr>
+<tr>
+<td>Ether-linked Glycerophospholipids &amp; Lysophospholipids</td>
+<td>PA / PC / PE / PG / PI / PS / LPA / LPC / LPE / LPG / LPI / LPS (<code>O-</code>/<code>P-</code>)</td>
+<td><code>[M+H]+</code>; <code>[M+NH4]+</code>; <code>[M+Na]+</code>; <code>[M+K]+</code></td>
+<td><code>[M-H]-</code>; <code>[M+HCOO]-</code> (PC/LPC/PE/LPE)</td>
+<td>all: MS2</td>
+<td>3–60</td>
+<td>6–8</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Ether-linked Di- and Monoacylglycerols</td>
+<td>DG / MG (<code>O-</code>/<code>P-</code>)</td>
+<td><code>[M+NH4]+</code>; <code>[M+Na]+</code>; <code>[M+H]+</code>; <code>[M+K]+</code></td>
+<td>—</td>
+<td>all: MS2</td>
+<td>3–60</td>
+<td>6–12</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Monomethyl- &amp; Dimethyl-PE, Phosphatidylthreonine, Phosphatidylmethanol, Phosphatidylethanol, Phosphatidylglucoside, Cyclic PA, CDP-DG, PIM1, PIM2</td>
+<td>MMPE / DMPE / PT / PMe / PEth / PGlc / cPA / CDP-DG / PIM1 / PIM2</td>
+<td><code>[M+H]+</code>; <code>[M+NH4]+</code>; <code>[M+Na]+</code>; <code>[M+K]+</code></td>
+<td><code>[M-H]-</code>; <code>[M+HCOO]-</code> (MMPE/DMPE)</td>
+<td>all: MS2</td>
+<td>3–60</td>
+<td>6–8</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Hemibis- &amp; Lyso-BMP, N-Acyl-PE/PS &amp; Lyso Forms, Monolyso- &amp; Dilyso-Cardiolipin</td>
+<td>HBMP / LBMP / NAPE / LNAPE / NAPS / LNAPS / MLCL / DLCL</td>
+<td><code>[M+H]+</code>; <code>[M+NH4]+</code>; <code>[M+Na]+</code>; <code>[M+K]+</code></td>
+<td><code>[M-H]-</code></td>
+<td>all: MS2</td>
+<td>3–90</td>
+<td>6–12</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Thylakoid Monoacyl-Glycolipids, Glucuronosyldiacylglycerol &amp; Betaine Lipids</td>
+<td>MGMG / DGMG / SQMG / GlcADG / DGTS / DGTA / LDGTS / DGCC / LDGCC</td>
+<td><code>[M+H]+</code>; <code>[M+NH4]+</code>; <code>[M+Na]+</code>; <code>[M+K]+</code></td>
+<td><code>[M+HCOO]-</code>; <code>[M-H]-</code></td>
+<td>all: MS2</td>
+<td>3–60</td>
+<td>6–8</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Fatty Acyl Amides/Esters, Lipoamino Acids, Aldehydes, Alcohols, Wax Esters &amp; Acyl-CoA</td>
+<td>FAHFA / NAGly / NAT / NASer / FAA / FAL / FOH / WE / CoA</td>
+<td><code>[M+H]+</code>; <code>[M+NH4]+</code>; <code>[M+Na]+</code>; <code>[M+K]+</code></td>
+<td><code>[M-H]-</code> (FAHFA/NAGly/NAT/NASer/CoA)</td>
+<td>all: MS2 (MS1 for FAL/FOH)</td>
+<td>2–60</td>
+<td>4–8</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Acylceramide, Ceramide-PE, Lyso-Sphingolipids, Glycosyl-IPC &amp; Sulfonolipids</td>
+<td>AcylCer / CerPE / PI-Cer / GIPC / LysoSM / LysoHexCer / LysoGb3 / SL</td>
+<td><code>[M+H]+</code>; <code>[M+NH4]+</code>; <code>[M+Na]+</code>; <code>[M+K]+</code></td>
+<td><code>[M-H]-</code>; <code>[M+HCOO]-</code></td>
+<td>all: MS2</td>
+<td>12–90</td>
+<td>6–9</td>
+<td>—</td>
+</tr>
+<tr>
+<td>Sterol Sulfate, Steryl Glucosides, Bile Acid Esters &amp; Ornithine Lipids</td>
+<td>ST-S / SG / ASG / BA-FA / OL</td>
+<td><code>[M+H]+</code>; <code>[M+NH4]+</code>; <code>[M+Na]+</code>; <code>[M+K]+</code></td>
+<td><code>[M-H]-</code>; <code>[M+HCOO]-</code> (SG/ASG)</td>
+<td>all: MS2</td>
+<td>12–60</td>
+<td>4–6</td>
+<td>—</td>
 </tr>
 </tbody>
 </table>
@@ -584,11 +664,11 @@
 <p>Negative-mode coverage comes from the <code>adducts_neg</code> entries of <code>data/lipids_definition.json</code>. The prior is the adduct's default weight (<code>adducts_neg_score</code>) and <code>rarity</code> is its adduct rarity (<code>adducts_neg_rarity</code>), shown only when non-zero. Only adducts that are also listed in <code>PARAM.adducts</code> are used in a run.</p>
 
 <ul>
-<li><code>[M-H]-</code> is defined for almost every class. <code>PC</code>, <code>LPC</code> (including ether <code>O-</code>/<code>P-</code> keys), <code>SM</code>, <code>Cer</code>, <code>HexCer</code>, <code>MGDG</code>, and <code>DGDG</code> also use <code>[M+HCOO]-</code> as a primary channel (prior 1, rarity 0), while <code>PE</code> and <code>LPE</code> (including <code>O-</code>/<code>P-</code>) list <code>[M+HCOO]-</code> as a secondary channel (prior 0.5, rarity 1).</li>
+<li><code>[M-H]-</code> is defined for almost every class. <code>PC</code>, <code>LPC</code>, <code>MMPE</code>, <code>DMPE</code> (including ether <code>O-</code>/<code>P-</code> keys), <code>SM</code>, <code>LysoSM</code>, <code>Cer</code>, <code>AcylCer</code>, <code>CerPE</code>, <code>HexCer</code>, <code>LysoHexCer</code>, <code>LysoGb3</code>, <code>MGDG</code>, <code>MGMG</code>, <code>DGDG</code>, <code>DGMG</code>, <code>DGTS</code>, <code>DGTA</code>, <code>LDGTS</code>, <code>DGCC</code>, <code>LDGCC</code>, <code>SG</code>, and <code>ASG</code> also use <code>[M+HCOO]-</code> as a primary channel (prior 1, rarity 0), while <code>PE</code> and <code>LPE</code> (including <code>O-</code>/<code>P-</code>) list <code>[M+HCOO]-</code> as a secondary channel (prior 0.5, rarity 1).</li>
 <li><code>[M+Ac-H]-</code> / <code>[M+CH3COO]-</code> has full Stage-2 headgroup and acyl/sphingoid fragment support for <code>PC</code>, <code>LPC</code>, <code>SM</code>, <code>Cer</code>, <code>HexCer</code>, <code>Hex2Cer</code>, and <code>LacCer</code> when added to a class definition or extra library; <code>FA [M-H]-</code> also carries Stage-2 diagnostic fragments (<code>[M-H-H2O]-</code>, <code>[M-H-CO2]-</code>, and in <code>qc-cid</code>/<code>qc-ead</code> PUFA retro-ene decarboxylation).</li>
-<li>Some classes have no negative entry: <code>FA-AMPP</code>, <code>SB</code>, <code>CE</code>, <code>TG</code>, <code>DG</code>, and <code>MG</code>. They are not annotated in negative mode.</li>
-<li><code>HexCer</code>, <code>Hex2Cer</code>, <code>LacCer</code>, <code>Hex3Cer</code>, <code>Cer</code>, <code>Sph</code>, <code>NAE</code>, <code>ST</code>, and <code>CAR</code> carry a reduced prior or rarity 1 for <code>[M-H]-</code>, so they rank below better-supported alternatives.</li>
-<li>Ether-linked <code>PC</code>, <code>PE</code>, <code>LPC</code>, and <code>LPE</code> (<code>O-</code>/<code>P-</code>) have their own keys, with the same <code>[M+HCOO]-</code> and <code>[M-H]-</code> channels. <code>LPC</code> and <code>LPE</code> each cover both the sn-1 and sn-2 acyl regioisomer keys.</li>
+<li>Some classes have no negative entry: <code>FA-AMPP</code>, <code>SB</code>, <code>CE</code>, <code>TG</code> (including <code>TGo</code>/<code>TGp</code>), <code>DG</code> (including <code>DGo</code>/<code>DGp</code>), <code>MG</code> (including <code>MGo</code>/<code>MGp</code>), <code>FAA</code>, <code>FAL</code>, <code>FOH</code>, and <code>WE</code>. They are not annotated in negative mode.</li>
+<li><code>HexCer</code>, <code>LysoHexCer</code>, <code>Hex2Cer</code>, <code>LacCer</code>, <code>Hex3Cer</code>, <code>LysoGb3</code>, <code>Cer</code>, <code>AcylCer</code>, <code>Sph</code>, <code>NAE</code>, <code>ST</code>, <code>SG</code>, <code>ASG</code>, and <code>CAR</code> carry a reduced prior or rarity 1 for <code>[M-H]-</code>, so they rank below better-supported alternatives.</li>
+<li>Ether-linked (<code>O-</code>) and plasmalogen (<code>P-</code>) glycerophospholipids (<code>PC</code>, <code>PE</code>, <code>PA</code>, <code>PG</code>, <code>PI</code>, <code>PS</code> and their lyso forms) and glycerolipids (<code>TG</code>, <code>DG</code>, <code>MG</code>) have their own keys and cover both sn-1 and sn-2 lyso regioisomer keys where applicable.</li>
 </ul>
 
 <h2>Oxidation</h2>

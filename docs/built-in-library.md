@@ -77,66 +77,54 @@ See [Oxidation analysis](oxidation.md) for the difference between oxygen-count e
 
 Negative-mode coverage comes from the `adducts_neg` entries of `data/lipids_definition.json`. The prior is the adduct's default weight (`adducts_neg_score`) and `rarity` is its adduct rarity (`adducts_neg_rarity`), shown only when non-zero. Only adducts that are also listed in `PARAM.adducts` are used in a run.
 
-- `[M-H]-` is defined for almost every class. `PC`, `LPC` (including ether `O-`/`P-` keys), `SM`, `Cer`, `HexCer`, `MGDG`, and `DGDG` also include `[M+HCOO]-` as a primary channel (prior 1, rarity 0), and `PE` / `LPE` (including `O-`/`P-`) include `[M+HCOO]-` as a secondary channel (prior 0.5, rarity 1).
+- `[M-H]-` is defined for almost every class. `PC`, `LPC`, `MMPE`, `DMPE` (including ether `O-`/`P-` keys), `SM`, `LysoSM`, `Cer`, `AcylCer`, `CerPE`, `HexCer`, `LysoHexCer`, `LysoGb3`, `MGDG`, `MGMG`, `DGDG`, `DGMG`, `DGTS`, `DGTA`, `LDGTS`, `DGCC`, `LDGCC`, `SG`, and `ASG` also include `[M+HCOO]-` as a primary channel (prior 1, rarity 0), and `PE` / `LPE` (including `O-`/`P-`) include `[M+HCOO]-` as a secondary channel (prior 0.5, rarity 1).
 - `[M+Ac-H]-` / `[M+CH3COO]-` has full Stage-2 headgroup and acyl/sphingoid fragment support for `PC`, `LPC`, `SM`, `Cer`, `HexCer`, `Hex2Cer`, and `LacCer` when added to a class definition or extra library; `FA [M-H]-` also carries Stage-2 diagnostic fragments (`[M-H-H2O]-`, `[M-H-CO2]-`, and in `qc-cid`/`qc-ead` PUFA retro-ene decarboxylation).
-- Some classes have no negative entry: `FA-AMPP`, `SB`, `CE`, `TG`, `DG`, and `MG`. They are not annotated in negative mode.
-- `HexCer`, `Hex2Cer`, `LacCer`, `Hex3Cer`, `Cer`, `Sph`, `NAE`, `ST`, and `CAR` carry a reduced prior or rarity 1 for `[M-H]-`, so they rank below better-supported alternatives.
-- Ether-linked `PC`, `PE`, `LPC`, and `LPE` (`O-`/`P-`) have their own keys, with the same `[M+HCOO]-` and `[M-H]-` channels. `LPC` and `LPE` each cover both the sn-1 and sn-2 acyl regioisomer keys.
+- Some classes have no negative entry: `FA-AMPP`, `SB`, `CE`, `TG` (including `TGo`/`TGp`), `DG` (including `DGo`/`DGp`), `MG` (including `MGo`/`MGp`), `FAA`, `FAL`, `FOH`, and `WE`. They are not annotated in negative mode.
+- `HexCer`, `LysoHexCer`, `Hex2Cer`, `LacCer`, `Hex3Cer`, `LysoGb3`, `Cer`, `AcylCer`, `Sph`, `NAE`, `ST`, `SG`, `ASG`, and `CAR` carry a reduced prior or rarity 1 for `[M-H]-`, so they rank below better-supported alternatives.
+- Ether-linked (`O-`) and plasmalogen (`P-`) glycerophospholipids (`PCo`/`PCp`, `PEo`/`PEp`, `PAo`/`PAp`, `PGo`/`PGp`, `PIo`/`PIp`, `PSo`/`PSp` and their lyso forms `LPCo`/`LPCp`, `LPEo`/`LPEp`, `LPAo`/`LPAp`, `LPGo`/`LPGp`, `LPIo`/`LPIp`, `LPSo`/`LPSp`) as well as ether glycerolipids (`TGo`/`TGp`, `DGo`/`DGp`, `MGo`/`MGp`) have their own keys and cover both sn-1 and sn-2 lyso regioisomer keys where applicable.
 
 | Class | Negative adducts (prior) | Carbon range | Max DB |
 | --- | --- | --- | --- |
-| `PC (O-)` | `[M+HCOO]-` 1; `[M-H]-` 1 | 12–60 | 8 |
-| `PC (P-)` | `[M+HCOO]-` 1; `[M-H]-` 1 | 12–60 | 8 |
-| `PE (O-)` | `[M-H]-` 1; `[M+HCOO]-` 0.5 (rarity 1) | 12–60 | 8 |
-| `PE (P-)` | `[M-H]-` 1; `[M+HCOO]-` 0.5 (rarity 1) | 12–60 | 8 |
-| `LPC (O-)` | `[M+HCOO]-` 1; `[M-H]-` 1 | 3–30 | 6 |
-| `LPC (P-)` | `[M+HCOO]-` 1; `[M-H]-` 1 | 3–30 | 6 |
-| `LPE (O-)` | `[M-H]-` 1; `[M+HCOO]-` 0.5 (rarity 1) | 3–30 | 6 |
-| `LPE (P-)` | `[M-H]-` 1; `[M+HCOO]-` 0.5 (rarity 1) | 3–30 | 6 |
-| `PI` | `[M-H]-` 1 | 12–60 | 8 |
-| `LPI` | `[M-H]-` 1 | 3–30 | 8 |
-| `PIP` | `[M-H]-` 1 | 2–60 | 8 |
-| `PIP2` | `[M-H]-` 1 | 12–60 | 8 |
-| `PIP3` | `[M-H]-` 1 | 12–60 | 8 |
-| `PA` | `[M-H]-` 1 | 3–60 | 8 |
-| `LPA` | `[M-H]-` 1 | 3–30 | 6 |
-| `LPG` | `[M-H]-` 1 | 3–30 | 6 |
-| `LPS` | `[M-H]-` 1 | 3–30 | 6 |
-| `BMP` | `[M-H]-` 1 | 12–60 | 6 |
-| `HexCer` | `[M+HCOO]-` 1; `[M-H]-` 0.5 (rarity 1) | 12–60 | 6 |
-| `Hex2Cer` | `[M-H]-` 0.5 (rarity 1) | 2–60 | 6 |
-| `LacCer` | `[M-H]-` 0.5 (rarity 1) | 12–60 | 6 |
-| `Hex3Cer` | `[M-H]-` 0.5 (rarity 1) | 12–60 | 6 |
-| `SHexCer` | `[M-H]-` 1 | 12–60 | 6 |
-| `CerP` | `[M-H]-` 1 | 12–60 | 6 |
-| `IPC` | `[M-H]-` 1 | 2–60 | 6 |
-| `MIPC` | `[M-H]-` 1 | 12–60 | 6 |
-| `MIP2C` | `[M-H]-` 1 | 12–60 | 6 |
-| `S1P` | `[M-H]-` 1 | 12–30 | 4 |
-| `MGDG` | `[M+HCOO]-` 1; `[M-H]-` 0.5 (rarity 1) | 12–60 | 6 |
-| `DGDG` | `[M+HCOO]-` 1; `[M-H]-` 0.5 (rarity 1) | 12–60 | 6 |
-| `SQDG` | `[M-H]-` 1 | 12–60 | 6 |
-| `GM3` | `[M-H]-` 1 | 12–60 | 6 |
-| `GM2` | `[M-H]-` 1 | 12–60 | 6 |
-| `GM1` | `[M-H]-` 1 | 12–60 | 6 |
-| `GD3` | `[M-H]-` 1 | 12–60 | 6 |
-| `GD2` | `[M-H]-` 1 | 12–60 | 6 |
-| `GD1` | `[M-H]-` 1 | 2–60 | 6 |
-| `GT1` | `[M-H]-` 1 | 12–60 | 6 |
+| `PC (O-)` / `PC (P-)` | `[M+HCOO]-` 1; `[M-H]-` 1 | 12–60 | 8 |
+| `PE (O-)` / `PE (P-)` | `[M-H]-` 1; `[M+HCOO]-` 0.5 (rarity 1) | 12–60 | 8 |
+| `PA (O-)` / `PA (P-)` | `[M-H]-` 1 | 12–60 | 8 |
+| `PG (O-)` / `PG (P-)` | `[M-H]-` 1 | 12–60 | 8 |
+| `PI (O-)` / `PI (P-)` | `[M-H]-` 1 | 12–60 | 8 |
+| `PS (O-)` / `PS (P-)` | `[M-H]-` 1 | 12–60 | 8 |
+| `LPC (O-)` / `LPC (P-)` | `[M+HCOO]-` 1; `[M-H]-` 1 | 3–30 | 6 |
+| `LPE (O-)` / `LPE (P-)` | `[M-H]-` 1; `[M+HCOO]-` 0.5 (rarity 1) | 3–30 | 6 |
+| `LPA (O-)` / `LPA (P-)` | `[M-H]-` 1 | 3–30 | 6 |
+| `LPG (O-)` / `LPG (P-)` | `[M-H]-` 1 | 3–30 | 6 |
+| `LPI (O-)` / `LPI (P-)` | `[M-H]-` 1 | 3–30 | 6 |
+| `LPS (O-)` / `LPS (P-)` | `[M-H]-` 1 | 3–30 | 6 |
+| `PI` / `LPI` / `PIP` / `PIP2` / `PIP3` | `[M-H]-` 1 | 2–60 | 8 |
+| `PA` / `LPA` / `cPA` | `[M-H]-` 1 | 3–60 | 8 |
+| `PG` / `LPG` / `BMP` / `HBMP` / `LBMP` | `[M-H]-` 1 | 2–90 | 12 |
+| `PS` / `LPS` / `PT` | `[M-H]-` 1 | 2–60 | 8 |
+| `MMPE` / `DMPE` | `[M-H]-` 1; `[M+HCOO]-` 1 | 12–60 | 8 |
+| `PMe` / `PEth` / `PGlc` / `PIM1` / `PIM2` / `CDP-DG` | `[M-H]-` 1 | 12–60 | 8 |
+| `NAPE` / `LNAPE` / `NAPS` / `LNAPS` | `[M-H]-` 1 | 12–90 | 12 |
+| `CL` / `MLCL` / `DLCL` | `[M-H]-` 1 | 2–80 | 12 |
+| `HexCer` / `LysoHexCer` | `[M+HCOO]-` 1; `[M-H]-` 0.5 (rarity 1) | 12–60 | 6 |
+| `Hex2Cer` / `LacCer` / `Hex3Cer` / `LysoGb3` | `[M+HCOO]-` 1 (`LysoGb3`); `[M-H]-` 0.5 (rarity 1) | 2–60 | 6 |
+| `SHexCer` / `CerP` / `IPC` (`PI-Cer`) / `MIPC` / `MIP2C` / `GIPC` / `S1P` / `SL` | `[M-H]-` 1 | 2–60 | 6 |
+| `CerPE` (`PE-Cer`) | `[M-H]-` 1; `[M+HCOO]-` 1 | 12–60 | 6 |
+| `MGDG` / `MGMG` / `DGDG` / `DGMG` | `[M+HCOO]-` 1; `[M-H]-` 0.5 (rarity 1) | 3–60 | 6 |
+| `SQDG` / `SQMG` / `GlcADG` | `[M-H]-` 1 | 3–60 | 8 |
+| `DGTS` / `DGTA` / `LDGTS` / `DGCC` / `LDGCC` | `[M+HCOO]-` 1 | 3–60 | 8 |
+| `GM3` / `GM2` / `GM1` / `GD3` / `GD2` / `GD1` / `GT1` | `[M-H]-` 1 | 2–60 | 6 |
 | `NAE` | `[M-H]-` 0.5 (rarity 1) | 3–30 | 6 |
+| `NAGly` / `NAT` / `NASer` / `FAHFA` / `CoA` | `[M-H]-` 1 | 3–60 | 8 |
 | `ST` | `[M-H]-` 0.3 (rarity 1) | 2–34 | 6 |
+| `ST-S` / `BA-FA` / `OL` | `[M-H]-` 1 | 12–60 | 6 |
+| `SG` (`HexST`) / `ASG` (`AHexST`) | `[M+HCOO]-` 1; `[M-H]-` 0.5 (rarity 1) | 18–60 | 6 |
 | `FA` | `[M-H]-` 1 | 2–34 | 6 |
 | `CAR` | `[M-H]-` 0.5 (rarity 1) | 2–30 | 6 |
-| `PE` | `[M-H]-` 1; `[M+HCOO]-` 0.5 (rarity 1) | 2–60 | 8 |
-| `LPE` | `[M-H]-` 1; `[M+HCOO]-` 0.5 (rarity 1) | 2–30 | 6 |
-| `PC` | `[M+HCOO]-` 1; `[M-H]-` 1 | 2–60 | 8 |
-| `LPC` | `[M+HCOO]-` 1; `[M-H]-` 1 | 2–30 | 6 |
-| `PG` | `[M-H]-` 1 | 2–60 | 8 |
-| `PS` | `[M-H]-` 1 | 2–60 | 8 |
-| `Cer` | `[M+HCOO]-` 1; `[M-H]-` 0.5 (rarity 1) | 2–60 | 6 |
+| `PE` / `LPE` | `[M-H]-` 1; `[M+HCOO]-` 0.5 (rarity 1) | 2–60 | 8 |
+| `PC` / `LPC` | `[M+HCOO]-` 1; `[M-H]-` 1 | 2–60 | 8 |
+| `Cer` / `AcylCer` | `[M+HCOO]-` 1; `[M-H]-` 0.5 (rarity 1) | 2–90 | 9 |
 | `Sph` | `[M-H]-` 0.5 (rarity 1) | 2–60 | 6 |
-| `SM` | `[M+HCOO]-` 1; `[M-H]-` 1 | 28–60 | 6 |
-| `CL` | `[M-H]-` 1 | 2–80 | 12 |
+| `SM` / `LysoSM` | `[M+HCOO]-` 1; `[M-H]-` 1 | 12–60 | 6 |
 
 ## Optional libraries
 
@@ -174,8 +162,9 @@ The internal library provides coverage for a defined set of lipid classes, each 
 ### Important coverage notes
 
 - The internal library covers the major lipid classes implemented in LipidOracle.
-- **Cardiolipin (`CL`)** has more limited structural resolution than simpler lipid classes.
-- **Ether-linked entries** are represented by their distinct library keys (not mixed with non-ether forms).
+- **Cardiolipin (`CL`, `MLCL`, `DLCL`)** has more limited structural resolution than simpler lipid classes.
+- **Ether-linked (`O-`) and plasmalogen (`P-`) entries** are represented by their distinct library keys (not mixed with non-ether forms).
+- **Sphingolipids** use an expanded sphingoid base pool (`d16:0`–`d20:1`, `t18:0`, `t18:1`, with `sn1_maxO = 1` on `t`-series bases).
 - **Class/adduct support is chemistry-specific**, so an adduct in `PARAM.adducts` does not guarantee useful fragments for every class.
 - **Stage 3 has additional restrictions** on acquisition and class-specific capabilities.
 - Do not infer coverage from the presence of a similar class in another polarity, instrument mode, or configuration.
@@ -188,49 +177,56 @@ The internal library (`data/lipids_definition.json`) defines the following class
 
 | Abbreviation | Class |
 | --- | --- |
+| `AcylCer` | 1-O-Acylceramide |
 | `AMPP-FA` | AMPP-derivatized fatty acid |
-| `BMP` | Bis(monoacylglycero)phosphate |
+| `ASG` (`AHexST`) | Acylated steryl glucoside |
+| `BA-FA` | Bile acid fatty acyl ester |
+| `BMP`, `HBMP` (`AcylPG`), `LBMP` | Bis(monoacylglycero)phosphate, hemibis(monoacylglycero)phosphate, and lyso-BMP |
 | `CAR` | Acylcarnitine |
+| `CDP-DG` | Cytidine diphosphate diacylglycerol |
 | `CE` | Cholesteryl ester |
 | `Cer` | Ceramide |
-| `CerP` | Ceramide phosphate |
-| `CL` | Cardiolipin |
-| `DG` | Diacylglycerol |
-| `DGDG` | Digalactosyldiacylglycerol |
+| `CerP` | Ceramide 1-phosphate |
+| `CerPE` (`PE-Cer`) | Ceramide phosphoethanolamine |
+| `CL`, `MLCL`, `DLCL` | Cardiolipin, monolysocardiolipin, and dilysocardiolipin |
+| `CoA` | Acyl-coenzyme A |
+| `cPA` | Cyclic phosphatidic acid |
+| `DG` | Diacylglycerol (diacyl and ether-linked `DGo`/`DGp` keys) |
+| `DGCC`, `LDGCC` | Diacylglyceryl- and lysodiacylglyceryl-3-O-carboxyhydroxymethylcholine |
+| `DGDG`, `DGMG` | Digalactosyldiacylglycerol and digalactosylmonoacylglycerol |
+| `DGTS`, `DGTA`, `LDGTS` | Diacylglyceryl-N,N,N-trimethylhomoserine, hydroxymethyl-beta-alanine, and lyso-DGTS |
+| `DMPE` (`PE-NMe2`) | Phosphatidyldimethylethanolamine |
 | `FA` | Fatty acid |
+| `FAA`, `FAL`, `FOH`, `WE` | Primary fatty Acid amide, fatty aldehyde, fatty alcohol, and wax ester |
+| `FAHFA` | Fatty acid ester of hydroxy fatty acid |
 | `GD1`, `GD2`, `GD3` | Ganglioside (di-sialo) |
+| `GIPC`, `IPC` (`PI-Cer`), `MIPC`, `MIP2C` | Inositol phosphorylceramide and glycosyl/mannosyl IPCs |
+| `GlcADG` | Glucuronosyldiacylglycerol |
 | `GM1`, `GM2`, `GM3` | Ganglioside (mono-sialo) |
 | `GT1` | Ganglioside (tri-sialo) |
-| `HexCer` | Hexosylceramide (monohexosylceramide) |
-| `Hex2Cer` | Dihexosylceramide |
-| `Hex3Cer` | Trihexosylceramide |
-| `IPC` | Inositol phosphorylceramide |
-| `LacCer` | Lactosylceramide |
-| `LPA` | Lysophosphatidic acid |
-| `LPC` | Lysophosphatidylcholine (diacyl and ether-linked O-/P- keys) |
-| `LPE` | Lysophosphatidylethanolamine (diacyl and ether-linked O-/P- keys) |
-| `LPG` | Lysophosphatidylglycerol |
-| `LPI` | Lysophosphatidylinositol |
-| `LPS` | Lysophosphatidylserine |
-| `MG` | Monoacylglycerol |
-| `MGDG` | Monogalactosyldiacylglycerol |
-| `MIP2C` | Mannosyl-diinositolphosphorylceramide |
-| `MIPC` | Mannosylinositolphosphorylceramide |
-| `NAE` | N-acylethanolamine |
-| `PA` | Phosphatidic acid |
-| `PC` | Phosphatidylcholine (diacyl and ether-linked O-/P- keys) |
-| `PE` | Phosphatidylethanolamine (diacyl and ether-linked O-/P- keys) |
-| `PG` | Phosphatidylglycerol |
-| `PI` | Phosphatidylinositol |
+| `HexCer`, `LysoHexCer` | Hexosylceramide and lysohexosylceramide |
+| `Hex2Cer`, `LacCer` | Dihexosylceramide / lactosylceramide |
+| `Hex3Cer`, `LysoGb3` | Trihexosylceramide and globotriaosylsphingosine |
+| `LPA`, `LPC`, `LPE`, `LPG`, `LPI`, `LPS` | Lysoglycerophospholipids (diacyl and ether-linked `O-`/`P-` keys) |
+| `MG` | Monoacylglycerol (monoacyl and ether-linked `MGo`/`MGp` keys) |
+| `MGDG`, `MGMG` | Monogalactosyldiacylglycerol and monogalactosylmonoacylglycerol |
+| `MMPE` (`PE-NMe`) | Phosphatidylmonomethylethanolamine |
+| `NAE`, `NAGly`, `NAT`, `NASer` | N-acylethanolamine, N-acylglycine, N-acyltaurine, and N-acylserine |
+| `NAPE`, `LNAPE`, `NAPS`, `LNAPS` | N-acyl-phosphatidylethanolamine/serine and lyso forms |
+| `OL` | Ornithine lipid |
+| `PA`, `PC`, `PE`, `PG`, `PI`, `PS` | Glycerophospholipids (diacyl and ether-linked `O-`/`P-` keys) |
+| `PEth`, `PMe`, `PGlc` | Phosphatidylethanol, phosphatidylmethanol, and phosphatidylglucoside |
+| `PIM1`, `PIM2` | Phosphatidylinositol mono- and dimannoside |
 | `PIP`, `PIP2`, `PIP3` | Phosphatidylinositol mono-/bis-/trisphosphate |
-| `PS` | Phosphatidylserine |
+| `PT` | Phosphatidylthreonine |
 | `S1P` | Sphingosine-1-phosphate |
-| `SB` | Sphingoid base |
+| `SB`, `Sph` | Sphingoid base / sphingosine |
+| `SG` (`HexST`) | Steryl glucoside |
 | `SHexCer` | Sulfatide (sulfo-hexosylceramide) |
-| `SM` | Sphingomyelin |
-| `Sph` | Sphingosine |
-| `SQDG` | Sulfoquinovosyldiacylglycerol |
-| `ST` | Sterol |
-| `TG` | Triacylglycerol |
+| `SL` | Sulfonolipid |
+| `SM`, `LysoSM` | Sphingomyelin and lysosphingomyelin |
+| `SQDG`, `SQMG` | Sulfoquinovosyldiacylglycerol and sulfoquinovosylmonoacylglycerol |
+| `ST`, `ST-S` | Sterol and cholesterol/sterol sulfate |
+| `TG` | Triacylglycerol (triacyl and ether-linked `TGo`/`TGp` keys) |
 
-Ether-linked glycerophospholipids (`PCo`/`PCp`, `PEo`/`PEp`, `LPCo`/`LPCp`, `LPEo`/`LPEp`) share their diacyl abbreviation in output but are defined under separate internal keys, consistent with the [ether-linked entries note](#important-coverage-notes) above.
+Ether-linked glycerophospholipids (`PCo`/`PCp`, `PEo`/`PEp`, `PAo`/`PAp`, `PGo`/`PGp`, `PIo`/`PIp`, `PSo`/`PSp` and their lyso keys `LPCo`/`LPCp`, `LPEo`/`LPEp`, `LPAo`/`LPAp`, `LPGo`/`LPGp`, `LPIo`/`LPIp`, `LPSo`/`LPSp`) and ether-linked glycerolipids (`TGo`/`TGp`, `DGo`/`DGp`, `MGo`/`MGp`) share their diacyl abbreviation in output with `O-`/`P-` chain prefixes, but are defined under separate internal keys, consistent with the [ether-linked entries note](#important-coverage-notes) above.
