@@ -183,7 +183,8 @@ the file has a sensible default.
 ```yaml
 WORKFLOW:
   lipidoracle: True      # internal MS1/MS2 engine — keep on
-  stage3: False           # False | ead1 | ead2 | uvpd | oad | ozid
+  stage2: legacy          # False | legacy | qc-cid | qc-ead
+  stage3: False           # False | ead1 | ead2 | ead3 | uvpd | uvpd2 | oad | oad2 | ozid
   rt_check: liri         # False | liri | hydra | legacy
   library_extra: [ ]     # optional extra CSV libraries
   is_peaks: ''            # optional internal-standard CSV
@@ -192,6 +193,17 @@ WORKFLOW:
 The complete annotated parameter file, with every key and its default, is in
 [reference/lipidoracle.default.yaml](reference/lipidoracle.default.yaml). Read
 it before changing anything outside `WORKFLOW:`.
+
+### Choosing the `stage2` engine
+
+`WORKFLOW.stage2` selects which MS2 fragment simulator generates the internal headgroup and acyl-chain library for stage 2 when `lipidoracle: True`:
+
+| Value | Use for |
+| --- | --- |
+| `legacy` (or `True`, default) | Empirical rule-based headgroup (`data/diag_cid_hg.json`) and acyl/alkyl/sphingoid cleavage simulator. Includes ether-`PE`/`PS` acylium gating, conserved `TG`/`DG` symmetry reaction degeneracy, `SM`/`HexCer`/`LacCer` sphingoid dehydration and amide ketene losses, `PC [M+Na]+` sodiated ketene loss, and negative-mode `FA [M-H]-`, `[M+HCOO]-`, and `[M+Ac-H]-` support. |
+| `qc-cid` | First-principles RRKM/TS-2D QC-CID simulator ($E^* = 46\text{ kcal/mol}$, $s_{\text{eff}} = 8.5$) for CID/HCD spectra. Filters high-barrier ($>50\text{ kcal/mol}$) headgroup artifacts and adds `TG`/`DG [M+Na]+` $\text{Na}^+$-retained `[M+Na-RCOOH]+` ions, `PE`/`PS [M+H]+` ketene losses, `PC [M+H]+` *sn*-1 ketene/FA losses, and PUFA ($\text{db} \ge 4$) retro-ene `[RCOO-CO2]-` ions. |
+| `qc-ead` | First-principles 10–20 eV QC-EAD stage-2 simulator for EAD spectra. Combines `qc-cid` thermal channels with EAD electronic/radical headgroup and glycerol-backbone diagnostics (`PC`/`LPC [M+H]+` `GPC+H-CH3OH` $m/z\ 226.0839$ and `GPC+H` $m/z\ 258.1101$, `SM [M+H]+` C2–C3 phosphocholine cleavages $m/z\ 225.0999 / 253.0948$, homolytic ester C–O acyloxyl radical loss `[M+Adduct-RCOO•]+`, Baba's regioisomeric *sn*-1 glycerol C1–C2 radical loss `[M+Adduct-R1COOCH2•]+`, and sphingoid C2–C3 backbone ions). |
+| `False` | Skips stage 2 and reports stage-1 accurate-mass matches only. |
 
 ### Choosing the `stage3` engine
 
@@ -202,8 +214,10 @@ dissociation method.
 | --- | --- |
 | `ead1` | Chain-ladder engine for double bonds. No oxygen support at all — `;O` species are dropped. |
 | `ead2` | Exact-formula cleavage engine; required for anything oxidised (`;O`). |
-| `uvpd` | 193/213 nm photodissociation data. |
-| `oad` | Unoxidised diacyl PC `[M+H]+` only (MS-DIAL OAD rules). Other classes, adducts, oxidised lipids, ether chains, and sphingoid bases are skipped, not approximated. |
+| `ead3` | Hybrid of `ead2` with a bounded DFT-informed, observed-data-calibrated correction for coupled motifs such as divinyl-carbinols. |
+| `uvpd` | 193/213 nm photodissociation data (unoxidised chains). |
+| `uvpd2` | Whole-chain quantum-chemistry multi-wavelength UVPD engine supporting 193, 213 (default), 266, and 355 nm across unoxidised (`C=C`) and oxidised (`-OH`, `=O`) chains (`PARAM.s3_uvpd_wavelength_nm`). |
+| `oad` / `oad2` | MS-DIAL OAD rules (validated for PC `[M+H]+`, TG `[M+NH4]+`, SM `[M+H]+`; `oad2` jointly competes candidates across all stage-2 parents for a feature). |
 | `ozid` | Aldehyde/Criegee diagnostic pairs on the validated PC/PE `[M+H]+`, PI `[M+Na]+`, and DG/TG `[M+NH4]+` profiles. Everything else fails closed. |
 
 With `ead2` on oxidised species, also raise `PARAM.s3_max_candidates` to

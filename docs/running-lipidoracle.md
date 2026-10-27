@@ -84,7 +84,7 @@ END IONS
 2. Keep the experiment to one polarity per run when possible. LipidOracle infers the dominant polarity from `CHARGE`.
 3. Supply meaningful feature identifiers so identified spectra can be traced back to the feature table and raw data.
 4. Do not pre-delete diagnostic low-abundance peaks solely to reduce file size. The pipeline has configurable cleanup (`ms2_noise_abs`, `ms2_noise_prc`, `ms2_mztrim`).
-5. For stage 3, preserve the fragmentation spectra produced by the intended acquisition mode. EAD2, OAD, OzID, and UVPD are not interchangeable analysis modes.
+5. For stage 3, preserve the fragmentation spectra produced by the intended acquisition mode. EAD2/EAD3, OAD/OAD2, OzID, and UVPD/UVPD2 are not interchangeable analysis modes.
 
 Precursor records within ±0.002 Da and ±0.5 seconds are deduplicated during import. If distinct acquisition events are being merged unexpectedly, inspect precursor *m/z* and RT in the exported MGF.
 
@@ -93,10 +93,11 @@ Precursor records within ±0.002 Da and ±0.5 seconds are deduplicated during im
 Save the following as `lipidoracle.yaml` next to the MGF. This is a minimal routine MS1/MS2 run. `PARAM: {}` is intentional: it activates the individual documented parameter defaults while keeping the example minimal.
 
 ```yaml
-VERSION: 1.0.267
+VERSION: 1.1.7
 
 WORKFLOW:
   lipidoracle: true
+  stage2: legacy
   stage3: false
   rt_check: false
 
@@ -111,10 +112,10 @@ Run the example, with `sample.mgf` and `lipidoracle.yaml` together in the input 
 docker run --rm \
   -v "$PWD/input:/input" \
   -v "$PWD/results:/output" \
-  zambonilab/lipidoracle:1.0.267
+  zambonilab/lipidoracle
 ```
 
-Useful flags, appended after the image name (for example `... zambonilab/lipidoracle:1.0.267 -d`): `-d` or `--debug` for verbose logs, `-q` or `--quiet` for minimal progress output, and `--no-dashboard-single-file` to generate a split dashboard instead of the default self-contained `dashboard.html`.
+Useful flags, appended after the image name (for example `... zambonilab/lipidoracle -d`): `-d` or `--debug` for verbose logs, `-q` or `--quiet` for minimal progress output, and `--no-dashboard-single-file` to generate a split dashboard instead of the default self-contained `dashboard.html`.
 
 ## 4. Routine run variants
 
@@ -123,16 +124,18 @@ Useful flags, appended after the image name (for example `... zambonilab/lipidor
 ```yaml
 WORKFLOW:
   lipidoracle: true
+  stage2: legacy       # or qc-cid for first-principles QC-CID stage-2 simulation
   stage3: false
   rt_check: liri
   rt_ref: ''
 ```
 
-**Run EAD2 for C=C and supported oxygen-site localization:**
+**Run EAD2 (or EAD3) for C=C and supported oxygen-site localization:**
 
 ```yaml
 WORKFLOW:
   lipidoracle: true
+  stage2: legacy       # or qc-ead for 10-20 eV QC-EAD stage-2 simulation
   stage3: ead2
   rt_check: liri
 

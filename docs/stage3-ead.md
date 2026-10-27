@@ -15,15 +15,16 @@ For a lipid initially identified as `PC 16:0_18:1`, level 3 may contain multiple
 
 ```yaml
 WORKFLOW:
-  stage3: ead1       # or ead2
+  stage3: ead1       # or ead2 / ead3
 ```
 
 | Engine | Use when | Scope |
 | --- | --- | --- |
 | `ead1` | The data are EAD-style chain-cleavage spectra and lipids are unoxidized. | Heuristic chain ladder for C=C position candidates. Oxidized species are skipped. |
 | `ead2` | The data are EAD-style chain-cleavage spectra and oxygenated lipids may be present. | Exact-formula cleavage model for C=C, hydroxyl, and ketone hypotheses. |
+| `ead3` | The data are EAD-style chain-cleavage spectra, oxygenated lipids may be present, and you want EAD2's exact-formula model plus a bounded, DFT-informed correction for specific non-additive local motifs (e.g. the coupled divinyl-carbinol around OH in a 12-HETE). | A hybrid of EAD2: identical candidate enumeration, fragment matching, and confidence, with a DFT-motivated, observed-data-calibrated tweak to the bond weights. |
 
-Use `ead2` for supported oxidized lipids. Do not use either EAD engine for an OAD, OzID, or UVPD acquisition merely to obtain a positional result. Those methods have their own engine selection in `WORKFLOW.stage3`.
+Use `ead2` (or `ead3`) for supported oxidized lipids. Do not use any EAD engine for an OAD, OzID, or UVPD acquisition merely to obtain a positional result. Those methods have their own engine selection in `WORKFLOW.stage3`. For the provenance and tuning of `ead3`, see `dev/ead3.md`.
 
 ## Shared EAD workflow
 
@@ -49,7 +50,7 @@ PARAM:
 
 A `20:4` chain has 1,365 non-adjacent C=C arrangements. A `20:4;O` chain can generate roughly 22,300 valid hydroxyl/ketone hypotheses. If `s3_max_candidates` is smaller than the candidate space, the implementation stride-samples hypotheses before scoring. That can remove the true structure before evidence is evaluated. Treat this as a search-coverage limit, not a low score.
 
-` s3_max_oxygen` is honored by EAD2 and UVPD. EAD1 has no oxygen model. `s3_intensity_scaling` can be `none`, `sqrt` or `light`, `log10`, `ln`, or `log2`; it applies to intensity-weighted engines. Keep the setting fixed when comparing runs.
+`s3_max_oxygen` is honored by `ead2`, `ead3`, and `uvpd2`. `ead1` has no oxygen model, and baseline `uvpd` skips oxygenated (`;O`) chains entirely rather than modeling oxygen sites. `s3_intensity_scaling` can be `none`, `sqrt` or `light`, `log10`, `ln`, or `log2`; it applies to intensity-weighted engines. Keep the setting fixed when comparing runs.
 
 ## EAD1 scoring and assertion
 
@@ -78,6 +79,47 @@ For oxygenated hypotheses, `s3_oxo_rarity_prior` multiplies a candidate score fo
 
 ![Example oxygenated diacyl-glycerol positional representation](img/07_dg_180_182_oh5_sg.png)
 
+## EAD3 scoring and whole-chain quantum-chemistry radical evaluation
+
+`ead3` (`src/stage3_ead3.rs`) integrates the whole-chain quantum-chemistry
+(`lipidoracle-qc`) radical evaluation engine on top of `ead2`'s candidate
+enumeration, exact-formula fragment masses, and posterior selection. Instead of
+classifying a cleaved bond solely by its immediate endpoint labels, `ead3`
+evaluates the incipient head ($\text{C}_1..\text{C}_k^\bullet$) and tail
+($^\bullet\text{C}_{k+1}..\text{C}_n$) radicals across the entire chain —
+capturing bis-allylic pentadienyl resonance (`18.5 kcal/mol`), divinyl-carbinol
+capto-dative stabilization (as in 12-HETE), one-sided OH-assisted $-\text{H}$
+transfer, and Gasteiger–Marsili carboxyl inductive suppression. Set it with
+`WORKFLOW.stage3: ead3` (see `dev/ead3.md`).
+
+## UVPD and UVPD2 (193, 213 [default], 266, and 355 nm)
+
+LipidOracle provides two UVPD acyl-chain engines:
+
+- **`uvpd` (`src/stage3_uvpd.rs`)**: models 193/213 nm allylic $\text{C}-\text{C}$
+  cleavage around each double bond (`0`, `-H`, `+H` triad, reproducing the
+  canonical $24.0000\text{ Da}$ `+H`/`-H` and $26.0157\text{ Da}$ `0`/`0`
+  diagnostic pairs) with methyl-terminus `;dN` deuterium shifts on unoxidized chains.
+- **`uvpd2` (`src/stage3_uvpd2.rs`)**: whole-chain quantum-chemistry (`lipidoracle-qc`)
+  UVPD v2 engine supporting **193, 213 (default), 266, and 355 nm**
+  (`PARAM.s3_uvpd_wavelength_nm: 213.0`, or shorthand `WORKFLOW.stage3: uvpd193 | uvpd213 | uvpd266 | uvpd355`).
+  `uvpd2` models wavelength-selective $\pi \to \pi^*$ and $n \to \sigma^* / n \to \pi^*$
+  chromophore cross-sections across isolated alkenes, bis-allylic PUFAs, conjugated
+  dienes/enones, and divinyl-carbinols, suppresses the high-BDE central
+  $C(sp^2)-C(sp^2)$ bond inside conjugated dienes, and localizes both unoxidized
+  (`C=C`) and oxidized (`-OH`, `=O`) chains via Norrish Type I/II photolysis (see
+  `dev/uvpd2.md`).
+
+## Deuterium-labelled standards
+
+None of the EAD engines (`ead1`/`ead2`/`ead3`) are deuterium-aware. Their chain
+parsers do not interpret a `;dN` isotope tag, and there is no deuterium-mass
+correction in their fragment prediction — a deuterated chain is analyzed as its
+undeuterated composition. This differs from the UVPD engine, which does model a
+chain `;dN` label on the methyl terminus. Deuterated internal standards are
+therefore best matched as `is_peaks` and kept out of the localization engines
+(see `remove_d`), unless a deuterium-aware EAD model is added and validated.
+
 ## Candidate selection and `s3_score`
 
 The recommended path is posterior selection:
@@ -87,6 +129,7 @@ PARAM:
   s3_selection: posterior
   s3_post_temperature_ead1: 0.03
   s3_post_temperature_ead2: 0.003
+  s3_post_temperature_ead3: 0.03
   s3_post_credible_level: 0.95
   s3_post_odds_floor: 0.125
   s3_post_min_mass: 0.5

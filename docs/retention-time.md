@@ -60,7 +60,7 @@ Rows above the resolved cutoff are removed when an RT engine is selected. If `rt
 
 ## LiRI: Lipid Retention Index
 
-LiRI forms a structural index roughly equivalent to carbon content penalized for double bonds and oxygen, then fits a monotone index-to-RT map independently for each `(class, ether)` group. It uses high-confidence in-run IDs and optional aligned external anchors.
+LiRI forms a structural index roughly equivalent to carbon content penalized for double bonds and oxygen, then fits a monotone index-to-RT map independently for each `(class, ether)` group. It uses high-confidence in-run IDs and optional aligned external anchors. `rt_liri_train_minlevel` gates those anchors by evidence stage rather than by the reported idlevel, so a species-level report whose stage-2 search derived a chain composition still contributes an anchor: the regression uses compositional descriptors, which such a report carries in full.
 
 ```yaml
 PARAM:

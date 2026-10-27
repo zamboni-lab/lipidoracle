@@ -40,9 +40,9 @@ This is the stable compact export intended for downstream tables, statistics, an
 | feature/spectrum identifiers | Links back to `FEATURE_ID`, `INDEX`, or `TITLE` in the input MGF. |
 | precursor *m/z*, RT, polarity, adduct | Acquisition and ion identity context. |
 | `name`, `species`, `class`, `formula` | Lipid annotation and chemical metadata. Names use Goslin Shorthand2020. |
-| `stage`, `idlevel` | Evidence and specificity of the result. |
-| `score_s1`, `s2_score`, `s3_score`, `s3_score_raw` | Stage-specific evidence values. Interpret them within their stage and engine. |
-| `score_modcos` | Reference cosine-style MS2 value. It is not the selection score. |
+| `stage`, `idlevel` | `stage` is the pipeline stage that produced the row (1 accurate-mass/MS1, 2 chain-level MS2, 3 localization), so it is the calculation provenance. `idlevel` is the specificity the reported name claims: a name collapsed to the sum composition is `idlevel 1` even when `stage` is 2. |
+| `score_s1`, `s2_score`, `s2_score_raw`, `s3_score`, `s3_score_raw` | Stage-specific evidence values. Interpret them within their stage and engine. |
+| `s2_modcos` | Reference cosine-style MS2 value. It is not the selection score. |
 | `rival_resolvability` | Whether observed exclusive fragments separated the call from its best disagreeing rival. |
 | `rt_deviation` | Final generic formula-model RT deviation, not necessarily the selected RT engine's own error. |
 | library/source metadata | Lets a result be traced to the internal, extra, LipiDex, LipidBlast, or stage-3 source. |
@@ -71,6 +71,8 @@ The copied input MGF and effective `lipidoracle.yaml` are part of the result. A 
 | `diag/annotation_stage4.csv` | What positional consensus was reported? |
 
 With posterior stage-3 selection, `s3_score` is a probability over the generated closed candidate set. Written rows do not necessarily sum to 1 because the export contains the credible set and limited context rows, not the entire enumerated universe. With legacy selection, it is a raw or rescaled within-feature score rather than a probability.
+
+The same rewrite happens at stage 2, and `PARAM.s2_selection` also defaults to `posterior`: `s2_score` becomes a posterior probability over that spectrum's deduped candidate list, the original `hybrid_score` moves to `s2_score_raw`, and `s2_top_prob`/`s2_n_cred` report the top candidate's posterior mass and the retained credible-set size. The posterior is over the candidates that stage 2 generated for that precursor, so when the true species is absent from the library it still normalises over what was considered; read `s2_n_cred` and `s2_score_raw` alongside it. `s2_selection: legacy` keeps the historical absolute cutoffs (`s2_lo_score_cutoff`, then a relative top cutoff), which the posterior path does not apply.
 
 ### Candidate and resolvability diagnostics
 
@@ -109,7 +111,7 @@ python -m http.server 8000
 1. **Start with run summary and library information.** Confirm input, polarity, active libraries, workflow stages, and configuration.
 2. **Filter the annotation table.** Examine ID level, class, source, score, RT deviation, and rarity before focusing on individual structures.
 3. **Open a spectrum.** Compare the observed MS2 peaks with reported/diagnostic fragments. Check precursor, adduct, and RT first.
-4. **Inspect ambiguity.** For level-2 calls, read `rival_resolvability`. For level-3/4 calls, inspect the positional candidates, `s3_kept`, posterior/raw score fields, and confidence tail.
+4. **Inspect ambiguity.** For level-2 calls, read `rival_resolvability` and, under `s2_selection: posterior`, `s2_top_prob`/`s2_n_cred`. For level-3/4 calls, inspect the positional candidates, `s3_kept`, posterior/raw score fields, and confidence tail.
 5. **Review RT in context.** Treat a large deviation as a question to investigate, not a substitute for fragment inspection.
 6. **Export or preserve evidence.** Keep the dashboard, compact export, diagnostics, YAML, input MGF, and any custom library version together.
 

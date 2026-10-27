@@ -35,6 +35,23 @@ Stage 1 also matches configured internal standards through `WORKFLOW.is_peaks`. 
 
 For every candidate arrangement, LipidOracle predicts expected fragments with positive weights and can include negative-weight exclusion evidence. Predicted and observed fragments match within `PARAM.ms2_tolerance` after spectrum cleanup.
 
+### Stage-2 simulation engines (`WORKFLOW.stage2`)
+
+`WORKFLOW.stage2` selects which MS2 fragment simulator constructs the internal headgroup and acyl-chain library for stage 2:
+
+```yaml
+WORKFLOW:
+  lipidoracle: true
+  stage2: legacy        # false | legacy | qc-cid | qc-ead
+```
+
+| `stage2` value | Engine | Chemistry modeled |
+| --- | --- | --- |
+| `legacy` or `true` | Empirical rule-based simulator (default) | Combines curated headgroup rules (`data/diag_cid_hg.json`) with class-specific acyl/alkyl/sphingoid cleavage rules (`src/fragments.rs`). Enforces ether-`PE`/`PS` acylium gating (`!has_ether`), conserves symmetry reaction degeneracy when deduplicating identical chains in `TG`/`DG`, models `SM`/`HexCer`/`Hex2Cer`/`LacCer` sphingoid dehydration (`[Sph+H-H2O]+`, `[Sph+H-2H2O]+`) and `SM` amide ketene loss (`[M+H-Ketene(FA)]+`), includes `PC [M+Na]+` sodiated ketene loss, and supports negative-mode `FA [M-H]-`, `[M+HCOO]-`, and `[M+Ac-H]-` / `[M+CH3COO]-` fragmentation. |
+| `qc-cid` | First-principles QC-CID simulator | Evaluates gas-phase RRKM/TS-2D master-equation barriers ($E^* = 46\text{ kcal/mol}$, $s_{\text{eff}} = 8.5$). Filters kinetically inaccessible ($E_0^\ddagger > 50\text{ kcal/mol}$) headgroup artifacts (`PE` $m/z\ 142.0264$, `PS` $m/z\ 186.0162$) and adds `TG`/`DG [M+Na]+` $\text{Na}^+$-retained `[M+Na-RCOOH]+` ions, `PE`/`PS [M+H]+` ketene neutral losses (`-RCH=C=O`), `PC [M+H]+` minor *sn*-1 ketene/FA losses, and PUFA ($\text{db} \ge 4$) retro-ene decarboxylation `[RCOO-CO2]-` anions. |
+| `qc-ead` | First-principles 10–20 eV QC-EAD simulator | Extends the `qc-cid` thermal channels with EAD-specific electronic/radical headgroup and glycerol-backbone diagnostics: `PC`/`LPC [M+H]+` `GPC+H-CH3OH` ($m/z\ 226.0839$) and `GPC+H` ($m/z\ 258.1101$), `SM [M+H]+` C2–C3 phosphocholine cleavages ($m/z\ 225.0999$ and $253.0948$), homolytic ester C–O acyloxyl radical loss (`[M+Adduct-RCOO•]+`), Baba's regioisomeric *sn*-1 glycerol C1–C2 radical loss (`[M+Adduct-R1COOCH2•]+`), and sphingoid C2–C3 backbone ions. |
+| `false` | Disabled | Skips stage 2 and reports stage-1 accurate-mass matches only. |
+
 The stage-2 score is:
 
 ```text
@@ -50,7 +67,7 @@ s2_score = 0.75 × (matched_weight − 2 × exclusion_penalty) / total_weight
 | `matched_intensity` | Observed intensity attributed to matched fragments. |
 | `total_intensity` | Total observed intensity of the scan. |
 
-The first component asks whether expected diagnostic chemistry is present. The second ensures that a candidate explaining only a few tiny peaks cannot dominate a spectrum whose high-intensity peaks it fails to explain. `score_modcos` may be shown as a familiar cosine-style reference, but it is not the value used to filter or select stage-2 calls.
+The first component asks whether expected diagnostic chemistry is present. The second ensures that a candidate explaining only a few tiny peaks cannot dominate a spectrum whose high-intensity peaks it fails to explain. `s2_modcos` may be shown as a familiar cosine-style reference, but it is not the value used to filter or select stage-2 calls.
 
 ### Stage-2 filters
 
@@ -60,15 +77,20 @@ PARAM:
   ms2_noise_prc: 0.3
   ms2_mztrim: 5
   ms2_tolerance: 0.02
+  s2_selection: posterior
   s2_lo_score_cutoff: 0.2
+  s2_min_matched_rel: 0.01
   s2_score_top_cutoff: 0.9
 ```
 
-1. Peaks below `max(ms2_noise_abs, percentile(ms2_noise_prc))` are removed, then peaks too close to precursor are removed by `ms2_mztrim`.
-2. Candidates below `s2_lo_score_cutoff` are discarded.
-3. Surviving candidates must be within `s2_score_top_cutoff` of the best stage-2 score in that scan. At the default `0.9`, candidates within 90% of the best score remain.
+1. Peaks below `max(ms2_noise_abs, percentile(ms2_noise_prc))` are removed, then peaks too close to precursor are removed by `ms2_mztrim`. A candidate is also discarded unless its most intense matched fragment is at least `PARAM.s2_min_matched_rel` (default `0.01`) of the spectrum's base peak.
+2. `PARAM.s2_selection` picks how surviving candidates are cut, mirroring stage 3's `s3_selection` (the two are independent):
+   - `posterior` (default) — raw scores are converted to a softmax probability (`s2_post_temperature`), and the smallest set reaching `s2_post_credible_level` (default `0.95`) is kept, subject to `s2_post_odds_floor` (default `0.125`). `s2_lo_score_cutoff` does **not** apply on this path; `s2_score` is rewritten to the posterior probability, and the raw `hybrid_score` moves to `s2_score_raw`.
+   - `legacy` — candidates below `s2_lo_score_cutoff` are discarded, then surviving candidates must be within `s2_score_top_cutoff` of the best stage-2 score in that scan. At the default `0.9`, candidates within 90% of the best score remain.
 
 Increasing tolerance or lowering thresholds can improve sensitivity but also allows incorrect fragment coincidences. Calibrate these values on representative spectra with known standards.
+
+**Both stages select the same way.** Stage 2 and stage 3 each enumerate a candidate set and convert the raw scores of that set into a posterior by softmax; the retained set is the smallest one holding `s2_post_credible_level` (or `s3_post_credible_level`), subject to the odds floor. The sets differ in what they enumerate - stage 3 covers the localized isomers of the selected chains, stage 2 the library species and adducts compatible with the precursor - and the posterior is over the set each stage generates. If the true species is not in that set (an unmodelled class, the wrong adduct, a chimaeric spectrum), the posterior still normalises over the candidates that were generated, so read the credible-set size, `s2_score_raw` and the resolvability verdict together rather than `s2_score` alone. `s2_selection: legacy` keeps the historical absolute-cutoff behaviour (`s2_lo_score_cutoff`, then a relative top cutoff) for runs that need it; `s2_lo_score_cutoff` does not apply on the posterior path.
 
 ## Chain resolvability is separate from a score lead
 
@@ -90,12 +112,12 @@ The audit is written to `diag/s2_chain_resolvability.csv`. Enable `s2_chain_dump
 ```yaml
 PARAM:
   s2_compress_undefined_chains_to_species: true
-  S2_unresolvable_chains_to_species: true
+  S2_unresolvable_chains_to_species: false
   s2_unresolvable_sn_to_unknown: true
 ```
 
 - `s2_compress_undefined_chains_to_species` handles the extreme case where only headgroup fragments match. It avoids inventing chains.
-- `S2_unresolvable_chains_to_species` is the strongest fallback. It reports `PC 34:1` instead of an arrangement when the data do not distinguish it from a rival.
+- `S2_unresolvable_chains_to_species` is the strongest fallback, and off by default. It reports `PC 34:1` instead of an arrangement when the data do not distinguish it from a rival. The default keeps the arrangement and removes only the *sn* claim, because the audit abstains in cases where the withheld arrangement is generally right.
 - `s2_unresolvable_sn_to_unknown` is milder. It changes a slash to an underscore, for example `PC 16:0/18:1` to `PC 16:0_18:1`, retaining chain identities without claiming *sn* order.
 
 The chain posterior fields `top_prob` and `cred95` are diagnostic only. `s2_chain_temperature` has not been calibrated as a probability and must not be interpreted as a validated confidence percentage.

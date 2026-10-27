@@ -79,7 +79,7 @@
 <p>MS2 matching tells you a lipid is <code>PE 18:1_20:4</code>. It does not tell you <em>where</em> on those chains the double bonds sit, or where a hydroxyl group has been added. Stage 3, acyl-chain analysis, answers that second question: it takes stage-2 results and reports idlevel 3 (all plausible positional candidates) and idlevel 4 (the per-feature consensus).</p>
 <p>It runs on lipids that have <strong>already been identified</strong>, taking spectra acquired with a supported position-sensitive dissociation method and localising double-bond and, where supported, oxygen positions along each chain.</p>
 <pre><code class="language-yaml">WORKFLOW:
-  stage3: ead2   # False | ead1 | ead2 | uvpd | oad | ozid
+  stage3: ead2   # False | ead1 | ead2 | ead3 | uvpd | uvpd2 | oad | oad2 | ozid
 </code></pre>
 <p>This step is off by default. Select the engine matching the acquisition method: EAD, UVPD, OAD, or OzID. It cannot extract positional information from ordinary CID spectra.</p>
 <h2>The engines</h2>
@@ -121,6 +121,21 @@
 <p>So <code>20:4;O</code> admits <code>20:4;OH</code> and <code>20:3;oxo</code>, but never <code>20:4;oxo</code>. An oxygenated carbon may not be sp2, so no double bond may land on or adjacent to it.</p>
 <p>Two consequences worth stating plainly: the supported oxygen space is deliberately limited to hydroxyl and ketone readings, and hydroperoxide or extra-carboxyl interpretations are <strong>not</strong> enumerated at all.</p>
 <p>Because the name only ever carries an oxygen count, ead2 must search both the all-hydroxyl and the ketone readings on every oxidised feature. On a mono-hydroxy reference set its top candidate lands on the wrong <em>oxygen type</em> in about 30% of spectra. That is the cost of not being told the chemistry up front, and it is inherent to the <code>;O</code> data model rather than a scoring defect.</p>
+<h3>ead3: exact formulas + a DFT-informed correction</h3>
+<p><code>ead3</code> is <code>ead2</code> with one bounded, chemically-motivated change to the bond weights; the candidate enumeration, fragment masses, intensity weighting, selection, and confidence machinery are identical to <code>ead2</code>. It exists because <code>ead2</code>'s "alpha-first" bond classifier erases a coupled divinyl-carbinol motif — C=C at c−2, OH at c, C=C at c+2, as in 12-HETE — that is chemically its own context. <code>ead3</code> keeps that context as a separate class and applies a small, one-sided OH-assisted −H branch correction.</p>
+<p>The correction is DFT-motivated but explicitly observed-data calibrated: it is not passed off as a computed transition-state rate, and a gas-phase bond-dissociation energy is never used as an absolute peak-height coefficient (that single-weight prototype helped one fixture but hurt HETE/oxo, so it was rejected). Use <code>s3_intensity_scaling: none</code> and set <code>WORKFLOW.stage3: ead3</code>. See <code>dev/ead3.md</code> for provenance and rejected models.</p>
+<h3>uvpd: UV chain-cleavage fragments</h3>
+<p><code>uvpd</code> models 193/213 nm ultraviolet photodissociation. UVPD cleaves the carbon-carbon bonds allylic to a double bond, ejecting the hydrocarbon tail as a neutral and leaving a chain-retention fragment whose m/z places the cleavage site. Each double bond therefore produces a small cluster of diagnostic fragment ions along the chain, not a single clean pair.</p>
+<p>It runs in three steps:</p>
+<ol>
+<li><strong>Enumerate the hypotheses.</strong> As with the other chain engines, every non-adjacent placement of the chain's double bonds is generated; saturated chains collapse to a single trivial variant. Oxygenated (<code>;O</code>) chains are skipped entirely — UVPD does not localize oxygen sites, only C=C positions.</li>
+<li><strong>Simulate the diagnostic fragments.</strong> For each hypothesis the chain is walked bond by bond; an ordinary step loses CH₂ and a step crossing a double bond loses CH. Only the bonds allylic to a double bond emit fragment ions, each as a <code>0</code>/<code>-H</code>/<code>+H</code> triad.</li>
+<li><strong>Match and score.</strong> Predicted ions are pooled, binned by m/z, and matched one-to-one against the observed peaks within tolerance; the raw score is the intensity-weighted sum over the matched ions. UVPD therefore uses the same matched-ion scoring as EAD — it does <em>not</em> require a fully observed diagnostic-ion pair per double bond.</li>
+</ol>
+<p>UVPD is <strong>deuterium-aware</strong>. Chain tokens may carry a <code>;dN</code> isotope tag (e.g. <code>PE 15:0/18:1(9Z);d7</code>), and because the Equi/Ultimate standards place such labels on the chain methyl terminus — which the carboxylate-retention diagnostic ejects — the predicted ion masses are shifted lighter by <code>nd·(D−H)</code>. Headgroup-labelled standards (<code>PE;d5&nbsp;17:0/20:3(8Z,11Z,14Z)</code>) retain the label in the diagnostic and need no shift.</p>
+<p>UVPD uses the shared posterior/credible-set selection and the <code>s3_min_margin</code>/<code>s3_min_matched</code> assertion gate before writing a position into the idlevel-4 name (see <a href="scoring.html">Scoring, thresholds, and honest reporting</a>).</p>
+<h3>uvpd2: Whole-chain QC multi-wavelength UVPD (193, 213, 266, and 355 nm)</h3>
+<p><code>uvpd2</code> (<code>src/stage3_uvpd2.rs</code>, or shorthand <code>uvpd193</code>, <code>uvpd213</code>, <code>uvpd266</code>, <code>uvpd355</code>) upgrades <code>uvpd</code> with whole-chain quantum-chemistry (<code>lipidoracle-qc</code>) radical evaluation, explicit wavelength selectivity across <strong>193, 213 (default), 266, and 355 nm</strong> via <code>PARAM.s3_uvpd_wavelength_nm</code> (default <code>213.0</code>), and full support for both unoxidized (<code>C=C</code>) and oxidized (<code>-OH</code>, <code>=O</code>) acyl chains. It models wavelength-dependent &pi;&rarr;&pi;* and n&rarr;&sigma;*/n&rarr;&pi;* chromophore absorption cross-sections (isolated alkenes vs. bis-allylic PUFAs vs. conjugated dienes/enones vs. divinyl-carbinols), suppresses cleavage of the high-BDE central C(sp<sup>2</sup>)&ndash;C(sp<sup>2</sup>) single bond inside conjugated dienes, and includes Norrish Type I/II photolysis and Gasteiger&ndash;Marsili carboxyl inductive damping.</p>
 <h3>oad: MS-DIAL PC protonated profile</h3>
 <p><code>oad</code> implements the pinned MS-DIAL <code>PCOadSpectrumGenerator</code> and common acyl OAD mass rules for one deliberately narrow profile: unoxidised diacyl PC <code>[M+H]+</code>, charge +1. Other classes, adducts, oxidised lipids, ether chains, and sphingoid bases are skipped rather than approximated.</p>
 <p>For every proposed C=C position, OAD02 and OAD15 are essential anchors and both must be observed. OAD01, OAD03, OAD14, OAD16, OAD12+O, OAD12+O+H, and OAD12+O+2H are optional, intensity-weighted ranking evidence. Coincident theoretical masses are merged and observed peaks are assigned one-to-one.</p>
@@ -144,7 +159,7 @@
 <tr><td>Confidence tail reports</td><td>per-position marginal probabilities</td><td>vote counts over the kept set</td></tr>
 </tbody>
 </table>
-<p>The softmax temperature is fitted, not chosen, and is no longer one shared value: <code>s3_post_temperature_ead1</code> (<code>0.03</code>) and <code>s3_post_temperature_ead2</code> (<code>0.003</code>) were fitted separately per engine — ead1 already has its own assertion gate doing the selecting, so it stays close to its original, better-calibrated value, while ead2 has no gate of its own and needs a sharper posterior to avoid under-covering oxidised, positionally-dense chains. <code>s3_post_temperature</code> (<code>0.01</code>) remains shared across oad and ozid, which do not have their own fitted value yet, while UVPD has one now: <code>s3_post_temperature_uvpd</code> is <code>0.003</code>, the value the manuscript's UVPD benchmark uses. Score gaps are taken relative to the top score in every case, so a temperature is meaningful across engines whose raw scores differ by orders of magnitude even though its fitted value isn't shared.</p>
+<p>The softmax temperature is fitted, not chosen, and is no longer one shared value: <code>s3_post_temperature_ead1</code> (<code>0.03</code>), <code>s3_post_temperature_ead2</code> (<code>0.003</code>), <code>s3_post_temperature_ead3</code> (<code>0.03</code>), and <code>s3_post_temperature_uvpd</code> (<code>0.003</code>) were fitted separately per engine — ead1 already has its own assertion gate doing the selecting, so it stays close to its original, better-calibrated value, while oad, ozid, and oad2 share the single <code>s3_post_temperature</code> (<code>0.01</code>) and had borrows <code>ead1</code>'s value. Score gaps are taken relative to the top score in every case, so a temperature is meaningful across engines whose raw scores differ by orders of magnitude even though its fitted value isn't shared.</p>
 <p>The trade is coverage against correctness. Measured on a mono-hydroxy reference set with ead2, <code>legacy</code> asserts a C=C position on 84 of 96 features and is right on 55 (65%); <code>posterior</code> asserts 55 and is right on 40 (73%). <code>legacy</code> remains available for reproducing earlier results.</p>
 <h2>Configuration</h2>
 <p>Every stage-3 parameter is prefixed <code>s3_</code> &mdash; after the stage that owns it, not the ID level it reports. The former <code>ead_*</code> and <code>include_ms1_monochain</code> spellings are still accepted, so existing configs load unchanged.</p>
@@ -166,7 +181,7 @@
 <tr>
 <td><code>s3_max_oxygen</code></td>
 <td><code>2</code></td>
-<td>Caps total oxygen positions across all chains (ead2 and uvpd; ead1 ignores it)</td>
+<td>Caps total oxygen positions across all chains (used by <code>ead2</code>, <code>ead3</code>, and <code>uvpd2</code>; <code>ead1</code> has no oxygen support and baseline <code>uvpd</code> skips oxygenated <code>;O</code> chains).</td>
 </tr>
 <tr>
 <td><code>s3_max_candidates</code></td>
@@ -190,18 +205,18 @@
 </tr>
 <tr>
 <td><code>s3_min_margin</code></td>
-<td><code>0.0</code></td>
-<td>Minimum relative gap between the best two candidates before idlevel 4 names a position. Applied by ead1, oad, and uvpd always; by ead2 only when <code>s3_ead2_gate_db_on_resolvability</code> is turned on (off by default); by ozid always, in place of the matched-peak check below.</td>
+<td><code>0.05</code></td>
+<td>Minimum relative gap between the best two candidates before idlevel 4 names a position. Applied by ead1, oad, and uvpd always; by ead2 only when <code>s3_ead2_gate_margin</code> is turned on (off by default); by ozid always, in place of the matched-peak check below.</td>
 </tr>
 <tr>
 <td><code>s3_min_matched</code></td>
 <td><code>3</code></td>
-<td>Minimum peaks the winner must have matched for that gap to count. Applied by ead1, oad, and uvpd always; by ead2 only when <code>s3_ead2_gate_db_on_resolvability</code> is on. Not used by ozid, which requires a complete aldehyde/Criegee pair instead.</td>
+<td>Minimum peaks the winner must have matched for that gap to count. Applied by ead1, oad, and uvpd always; by ead2 only when <code>s3_ead2_gate_margin</code> is on. Not used by ozid, which requires a complete aldehyde/Criegee pair instead.</td>
 </tr>
 <tr>
 <td><code>s3_intensity_scaling</code></td>
 <td><code>none</code></td>
-<td>Compressive transform on matched intensity, shared across ead1, ead2, oad, and uvpd (ozid has no intensity-weighted score term): <code>none</code>, <code>sqrt</code>, <code>log10</code>, <code>ln</code>, <code>log2</code>. ead1 was fitted assuming <code>sqrt</code> weighting — set it explicitly to use that fit, since the shared default is <code>none</code>.</td>
+<td>Compressive transform on matched intensity, shared across ead1, ead2, ead3, oad, and uvpd (ozid has no intensity-weighted score term): <code>none</code>, <code>sqrt</code>, <code>log10</code>, <code>ln</code>, <code>log2</code>. ead1 was fitted assuming <code>sqrt</code> weighting — set it explicitly to use that fit, since the shared default is <code>none</code>.</td>
 </tr>
 <tr>
 <td><code>s3_include_ms1_monochain</code></td>
@@ -261,14 +276,14 @@
 <td>Likelihood-ratio floor on credible-set membership: a candidate drops out once its own probability falls below this fraction of the top candidate's, even short of <code>s3_post_credible_level</code>. Fitted for ead2; <code>0.0</code> disables it.</td>
 </tr>
 <tr>
-<td><code>s3_post_temperature_ead1</code> / <code>_ead2</code></td>
-<td><code>0.03</code> / <code>0.003</code></td>
+<td><code>s3_post_temperature_ead1</code> / <code>_ead2</code> / <code>_ead3</code> / <code>_uvpd</code></td>
+<td><code>0.03</code> / <code>0.003</code> / <code>0.03</code> / <code>0.003</code></td>
 <td>Softmax temperature, fitted separately per engine (see below)</td>
 </tr>
 <tr>
 <td><code>s3_post_temperature</code></td>
 <td><code>0.01</code></td>
-<td>Softmax temperature shared by oad, ozid, and uvpd, which have no fitted value of their own yet</td>
+<td>Softmax temperature shared by oad, ozid, and oad2, which have no engine-specific fitted value of their own</td>
 </tr>
 <tr>
 <td><code>s3_legacy_cutoff</code></td>

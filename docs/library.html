@@ -67,6 +67,8 @@
         <article>
 <h1>The built-in MS2 library</h1>
 
+<p>The internal MS2 library is generated dynamically for the active polarity, adducts, rarity, and oxidation limits using the selected Stage-2 simulation engine (<code>WORKFLOW.stage2</code>: <code>legacy</code> [default], <code>qc-cid</code>, or <code>qc-ead</code>; set <code>False</code> for MS1-only matching).</p>
+
 <h2>Classes</h2>
 <table>
 <thead>
@@ -126,8 +128,8 @@
 <td>Ceramide</td>
 <td>Cer</td>
 <td><code>[M+H]+</code>; <code>[M-H2O+H]+</code>; <code>[M+Na]+</code>; <code>[M+K]+</code></td>
-<td><code>[M-H]-</code></td>
-<td><code>[M+H]+</code>: MS2; <code>[M-H2O+H]+</code>: MS1; <code>[M+Na]+</code>: MS1; <code>[M+K]+</code>: MS1</td>
+<td><code>[M+HCOO]-</code>; <code>[M-H]-</code></td>
+<td><code>[M+H]+</code>: MS2; <code>[M-H2O+H]+</code>: MS1; <code>[M+Na]+</code>: MS1; <code>[M+K]+</code>: MS1; <code>[M+HCOO]-</code>: MS2; <code>[M-H]-</code>: MS2</td>
 <td>2–60</td>
 <td>6</td>
 <td>133</td>
@@ -167,7 +169,7 @@
 <td>FA</td>
 <td><code>[M+H]+</code>; <code>[M+Na]+</code>; <code>[M+NH4]+</code></td>
 <td><code>[M-H]-</code></td>
-<td>all: MS1</td>
+<td>pos: MS1; <code>[M-H]-</code>: MS2</td>
 <td>2–34</td>
 <td>6</td>
 <td>93</td>
@@ -266,8 +268,8 @@
 <td>Hexosylceramide</td>
 <td>HexCer</td>
 <td><code>[M+H]+</code>; <code>[M+Na]+</code>; <code>[M+K]+</code></td>
-<td><code>[M-H]-</code></td>
-<td><code>[M+H]+</code>: MS2; <code>[M+Na]+</code>: MS2; <code>[M+K]+</code>: MS1</td>
+<td><code>[M+HCOO]-</code>; <code>[M-H]-</code></td>
+<td><code>[M+H]+</code>: MS2; <code>[M+Na]+</code>: MS2; <code>[M+K]+</code>: MS1; <code>[M+HCOO]-</code>: MS2; <code>[M-H]-</code>: MS2</td>
 <td>12–60</td>
 <td>6</td>
 <td>133</td>
@@ -296,7 +298,7 @@
 <td>Lysophosphatidylcholine</td>
 <td>LPC</td>
 <td><code>[M+H]+</code>; <code>[M+Na]+</code>; <code>[M+Li]+</code></td>
-<td><code>[M-H]-</code></td>
+<td><code>[M+HCOO]-</code>; <code>[M-H]-</code></td>
 <td>all: MS2</td>
 <td>2–30, 3–30</td>
 <td>6</td>
@@ -306,8 +308,8 @@
 <td>Lysophosphatidylethanolamine</td>
 <td>LPE</td>
 <td><code>[M+H]+</code>; <code>[M+Na]+</code></td>
-<td><code>[M-H]-</code></td>
-<td><code>[M+H]+</code>: MS2; <code>[M+Na]+</code>: MS1</td>
+<td><code>[M-H]-</code>; <code>[M+HCOO]-</code></td>
+<td><code>[M+H]+</code>: MS2; <code>[M+Na]+</code>: MS1; neg: MS2</td>
 <td>2–30, 3–30</td>
 <td>6</td>
 <td>83, 53, 0</td>
@@ -416,7 +418,7 @@
 <td>Phosphatidylcholine</td>
 <td>PC</td>
 <td><code>[M+H]+</code>; <code>[M+Na]+</code></td>
-<td><code>[M-H]-</code></td>
+<td><code>[M+HCOO]-</code>; <code>[M-H]-</code></td>
 <td>all: MS2</td>
 <td>2–60, 12–60</td>
 <td>6</td>
@@ -426,8 +428,8 @@
 <td>Phosphatidylethanolamine</td>
 <td>PE</td>
 <td><code>[M+H]+</code>; <code>[M+Na]+</code></td>
-<td><code>[M-H]-</code></td>
-<td><code>[M+H]+</code>: MS2; <code>[M+Na]+</code>: MS1</td>
+<td><code>[M-H]-</code>; <code>[M+HCOO]-</code></td>
+<td><code>[M+H]+</code>: MS2; <code>[M+Na]+</code>: MS1; neg: MS2</td>
 <td>2–60, 12–60</td>
 <td>6</td>
 <td>337, 292, 0</td>
@@ -526,7 +528,7 @@
 <td>Sphingomyelin</td>
 <td>SM</td>
 <td><code>[M+H]+</code>; <code>[M+Na]+</code></td>
-<td><code>[M-H]-</code></td>
+<td><code>[M+HCOO]-</code>; <code>[M-H]-</code></td>
 <td>all: MS2</td>
 <td>28–60</td>
 <td>6</td>
@@ -582,11 +584,11 @@
 <p>Negative-mode coverage comes from the <code>adducts_neg</code> entries of <code>data/lipids_definition.json</code>. The prior is the adduct's default weight (<code>adducts_neg_score</code>) and <code>rarity</code> is its adduct rarity (<code>adducts_neg_rarity</code>), shown only when non-zero. Only adducts that are also listed in <code>PARAM.adducts</code> are used in a run.</p>
 
 <ul>
-<li><code>[M-H]-</code> is defined for almost every class. Two exceptions: <code>MGDG</code> and <code>DGDG</code> use <code>[M+HCOO]-</code> as their primary channel (<code>[M-H]-</code> is a rarer alternative).</li>
-<li><code>[M+Ac-H]-</code>, <code>[M+FA-H]-</code>, and <code>[M-2H]2-</code> are in the default <code>PARAM.adducts</code>, but no class lists them under <code>adducts_neg</code>. Check the dashboard's **Lipid library** page for their effect in your run.</li>
+<li><code>[M-H]-</code> is defined for almost every class. <code>PC</code>, <code>LPC</code> (including ether <code>O-</code>/<code>P-</code> keys), <code>SM</code>, <code>Cer</code>, <code>HexCer</code>, <code>MGDG</code>, and <code>DGDG</code> also use <code>[M+HCOO]-</code> as a primary channel (prior 1, rarity 0), while <code>PE</code> and <code>LPE</code> (including <code>O-</code>/<code>P-</code>) list <code>[M+HCOO]-</code> as a secondary channel (prior 0.5, rarity 1).</li>
+<li><code>[M+Ac-H]-</code> / <code>[M+CH3COO]-</code> has full Stage-2 headgroup and acyl/sphingoid fragment support for <code>PC</code>, <code>LPC</code>, <code>SM</code>, <code>Cer</code>, <code>HexCer</code>, <code>Hex2Cer</code>, and <code>LacCer</code> when added to a class definition or extra library; <code>FA [M-H]-</code> also carries Stage-2 diagnostic fragments (<code>[M-H-H2O]-</code>, <code>[M-H-CO2]-</code>, and in <code>qc-cid</code>/<code>qc-ead</code> PUFA retro-ene decarboxylation).</li>
 <li>Some classes have no negative entry: <code>FA-AMPP</code>, <code>SB</code>, <code>CE</code>, <code>TG</code>, <code>DG</code>, and <code>MG</code>. They are not annotated in negative mode.</li>
-<li><code>HexCer</code>, <code>Hex2Cer</code>, <code>LacCer</code>, <code>Hex3Cer</code>, <code>Cer</code>, <code>Sph</code>, <code>NAE</code>, <code>ST</code>, <code>FA</code>, and <code>CAR</code> carry a reduced prior or rarity 1 for <code>[M-H]-</code>, so they rank below better-supported alternatives.</li>
-<li>Ether-linked <code>PC</code>, <code>PE</code>, <code>LPC</code>, and <code>LPE</code> (<code>O-</code>/<code>P-</code>) have their own keys, with the same <code>[M-H]-</code> channel. <code>LPC</code> and <code>LPE</code> each cover both the sn-1 and sn-2 acyl regioisomer keys.</li>
+<li><code>HexCer</code>, <code>Hex2Cer</code>, <code>LacCer</code>, <code>Hex3Cer</code>, <code>Cer</code>, <code>Sph</code>, <code>NAE</code>, <code>ST</code>, and <code>CAR</code> carry a reduced prior or rarity 1 for <code>[M-H]-</code>, so they rank below better-supported alternatives.</li>
+<li>Ether-linked <code>PC</code>, <code>PE</code>, <code>LPC</code>, and <code>LPE</code> (<code>O-</code>/<code>P-</code>) have their own keys, with the same <code>[M+HCOO]-</code> and <code>[M-H]-</code> channels. <code>LPC</code> and <code>LPE</code> each cover both the sn-1 and sn-2 acyl regioisomer keys.</li>
 </ul>
 
 <h2>Oxidation</h2>

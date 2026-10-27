@@ -15,6 +15,7 @@ VERSION: x.y.z
 WORKFLOW:
   mz_target: ''
   lipidoracle: true
+  stage2: legacy
   lipidex: false
   lipidblast: false
   library_extra: []
@@ -30,13 +31,25 @@ WORKFLOW:
 | --- | --- | --- |
 | `mz_target` | empty string or target CSV | Restricts analysis to precursor targets. The CSV supplies target *m/z* values. Useful for focused QA or validation, not routine untargeted discovery. |
 | `lipidoracle` | `true` / `false` | Enables the internal MS1 and MS2 workflow. Stage 1 runs whenever it is enabled. |
+| `stage2` | `false`, `true` / `legacy`, `qc-cid`, or `qc-ead` | Selects the stage-2 MS2 fragment simulation engine (`legacy` default). Set `false` to skip stage 2 and run stage 1 only. See [MS1 and MS2 matching](ms1-ms2-matching.md). |
 | `lipidex` | `true` / `false` | Adds LipiDex comparison entries. Requires `lipidoracle: true`; functionality is more limited than for the internal library. |
 | `lipidblast` | `true` / `false` | Adds LipidBlast entries. See `lipidblast_skip` before enabling it for routine work. |
 | `library_extra` | list of `.csv` or `.csv.gz` paths | Appends external library files. Paths may be local relative paths or container paths such as `/data/...`. |
-| `stage3` | `false`, `ead1`, `ead2`, `uvpd`, `oad`, `oad2`, or `ozid` | Runs one acquisition-specific chain-localization engine after stages 1 and 2. See [Stage 3 with EAD](stage3-ead.md) and [Oxidation](oxidation.md). |
+| `stage3` | `false`, `ead1`, `ead2`, `ead3`, `uvpd`, `uvpd2` (`uvpd193`, `uvpd213`, `uvpd266`, `uvpd355`), `oad`, `oad2`, or `ozid` | Runs one acquisition-specific chain-localization engine after stages 1 and 2. See [Stage 3 with EAD](stage3-ead.md) and [Oxidation](oxidation.md). |
 | `rt_check` | `false`, `liri`, `hydra`, or `legacy` | Runs one RT checking engine. `liri` is the default conservative choice. See [Retention time](retention-time.md). |
 | `rt_ref` | empty string or RT reference CSV | Optional external RT anchors with columns `hg,c,db,mod,rt`. The engine aligns this file onto the current run's RT axis before using it. |
 | `is_peaks` | empty string or internal-standard CSV | Adds internal-standard peak matching at stage 1. Bundled EquiSPLASH, LightSPLASH, and UltimateSPLASH files can be used. |
+
+### Select an appropriate stage-2 engine
+
+`WORKFLOW.stage2` controls which MS2 fragment simulator generates the internal headgroup and acyl-chain library for stage 2 when `WORKFLOW.lipidoracle: true`:
+
+| `stage2` value | Intended evidence | Scope and behavior |
+| --- | --- | --- |
+| `legacy` or `true` | Routine CID/HCD or EAD (default) | Empirical rule-based headgroup (`data/diag_cid_hg.json`) and acyl/alkyl/sphingoid fragment simulator. Includes ether-`PE`/`PS` acylium gating, conserved `TG`/`DG` symmetry reaction degeneracy, `SM`/`HexCer`/`LacCer` sphingoid dehydration and amide ketene losses, `PC [M+Na]+` sodiated ketene loss, and negative-mode `FA [M-H]-` and `[M+Ac-H]-` / `[M+HCOO]-` profiles. |
+| `qc-cid` | Collision-induced dissociation (CID/HCD) | First-principles RRKM/TS-2D master-equation CID simulator ($E^* = 46\text{ kcal/mol}$, $s_{\text{eff}} = 8.5$). Prunes high-barrier ($>50\text{ kcal/mol}$) headgroup artifacts and adds `TG`/`DG [M+Na]+` $\text{Na}^+$-retained `[M+Na-RCOOH]+` ions, `PE`/`PS [M+H]+` ketene losses, `PC [M+H]+` *sn*-1 ketene/FA losses, and PUFA ($\text{db} \ge 4$) retro-ene `[RCOO-CO2]-` ions. |
+| `qc-ead` | 10–20 eV electron-activated dissociation (EAD) | First-principles 10–20 eV QC-EAD stage-2 simulator. Combines the `qc-cid` thermal channels with EAD-specific electronic/radical headgroup and glycerol-backbone diagnostics (`GPC+H-CH3OH` $m/z\ 226.0839$, `GPC+H` $m/z\ 258.1101$, `SM` C2–C3 phosphocholine cleavages $m/z\ 225.0999 / 253.0948$, homolytic ester acyloxyl radical loss `[M+Adduct-RCOO•]+`, Baba's regioisomeric *sn*-1 glycerol C1–C2 radical loss `[M+Adduct-R1COOCH2•]+`, and sphingoid C2–C3 backbone ions). |
+| `false` | MS1-only screening | Skips stage 2 entirely and reports stage-1 accurate-mass matches only. |
 
 ### Select an appropriate stage-3 engine
 
@@ -47,7 +60,9 @@ Do not use an engine simply because it produces more detailed names. The engine 
 | `false` | Routine CID/HCD or no localization data | Skip stage 3. Stage 2 results remain valid. |
 | `ead1` | EAD chain-cleavage spectra | Heuristic C=C localization for unoxidized species. Oxidized species are skipped. |
 | `ead2` | EAD chain-cleavage spectra | Exact-formula C=C, hydroxyl, and ketone candidate model. Required for supported oxidized-lipid localization. |
-| `uvpd` | 193/213 nm UVPD | UVPD-specific allylic cleavage model. |
+| `ead3` | EAD chain-cleavage spectra | Hybrid of `ead2`: identical exact-formula model plus a bounded DFT-informed, observed-data-calibrated correction for specific non-additive local motifs (e.g. 12-HETE's divinyl-carbinol). Use `s3_intensity_scaling: none`. |
+| `uvpd` | 193/213 nm UVPD | UVPD-specific allylic cleavage model for unoxidized chains. |
+| `uvpd2` | 193, 213 (default), 266, or 355 nm UVPD | Whole-chain quantum-chemistry (`lipidoracle-qc`) multi-wavelength UVPD engine supporting both unoxidized (`C=C`) and oxidized (`-OH`, `=O`) chains (`PARAM.s3_uvpd_wavelength_nm`). |
 | `oad` | OAD spectra | OAD profile-gated workflow. Existing validation is strongest for PC `[M+H]+`, TG `[M+NH4]+`, and SM `[M+H]+`; other supported classes are extrapolations. |
 | `oad2` | OAD spectra | Joint candidate competition across all stage-2 parents for a feature. |
 | `ozid` | Ozone-induced dissociation | Requires paired aldehyde and Criegee evidence. Unsupported chemistry is skipped rather than approximated. |
@@ -107,10 +122,12 @@ OzID deliberately applies only `ms2_noise_abs`: a weak member of the required al
 PARAM:
   s1_lo_score_cutoff: 0.2
   s1_score_top_cutoff: 0.5
+  s2_selection: posterior
   s2_lo_score_cutoff: 0.2
+  s2_min_matched_rel: 0.01
   s2_score_top_cutoff: 0.9
   s2_compress_undefined_chains_to_species: true
-  S2_unresolvable_chains_to_species: true
+  S2_unresolvable_chains_to_species: false
   s2_unresolvable_sn_to_unknown: true
   s2_chain_temperature: 1.0
   s2_chain_dump_candidates: false
@@ -118,9 +135,10 @@ PARAM:
 ```
 
 - The `*_lo_score_cutoff` parameters are absolute floors. `s2_score_top_cutoff` retains candidates relative to the best score for the feature. Although the template describes `s1_score_top_cutoff` similarly, the current stage-1 implementation retains only strict best-score ties, so it does not preserve near-best MS1 candidates.
-- `s2_compress_undefined_chains_to_species` prevents a multi-chain annotation from claiming a chain split when only headgroup evidence was observed.
-- `S2_unresolvable_chains_to_species` is stronger. It reports a species-level result when no exclusive observed fragment distinguishes the winning chain arrangement from its rival. Review `diag/s2_chain_resolvability.csv` before weakening or disabling it.
-- `s2_unresolvable_sn_to_unknown` is the milder fallback. It changes `/` to `_`, retaining chain composition while removing an unproven *sn* claim.
+- `s2_selection` picks how the idlevel-2 candidate list is cut. `posterior` (default, shown above) keeps the smallest set holding `s2_post_credible_level` of a softmax posterior (`s2_post_temperature`, `s2_post_odds_floor`) and rewrites `s2_score` to that probability, moving the raw score to `s2_score_raw`. `s2_selection: legacy` instead applies `s2_lo_score_cutoff` then `s2_score_top_cutoff`. Both stages therefore select the same way, over the candidate set each one enumerates; `legacy` remains available when an absolute cutoff is wanted instead — see [MS1 and MS2 matching](ms1-ms2-matching.md).
+- `s2_compress_undefined_chains_to_species` prevents a multi-chain annotation from claiming a chain split when only headgroup evidence was observed. A collapsed name is reported at `idlevel 1`.
+- `S2_unresolvable_chains_to_species` is stronger, and off by default. It reports a species-level result when no exclusive observed fragment distinguishes the winning chain arrangement from its rival. A collapsed name is reported at `idlevel 1`, while `stage` stays 2 and the verdict stays in `s2_resolvability`. The default instead keeps the chain composition and strips only the *sn* claim, because the arrangement the collapse withholds is generally the right one; enable this key when a reported name must not outrun the evidence. Review `diag/s2_chain_resolvability.csv` before changing it, in either direction.
+- `s2_unresolvable_sn_to_unknown` is the milder fallback. It changes `/` to `_`, retaining chain composition while removing an unproven *sn* claim, so the row stays at `idlevel 2`.
 - `s2_chain_temperature` influences diagnostic chain posteriors only. It is not calibrated as a probability.
 - `s2_chain_dump_candidates` writes all scored arrangements for calibration and troubleshooting. It can make diagnostics large.
 - `s2_suppress_idlevel1_if_idlevel2` avoids duplicating the same feature at both specificity levels in the compact export.
@@ -137,10 +155,12 @@ PARAM:
   s3_max_candidates: 100000
   s3_intensity_scaling: 'none'
   s3_oxo_rarity_prior: 0.85
+  s3_uvpd_wavelength_nm: 213.0
   s3_selection: posterior
   s3_post_temperature: 0.01
   s3_post_temperature_ead1: 0.03
   s3_post_temperature_ead2: 0.003
+  s3_post_temperature_ead3: 0.03
   s3_post_credible_level: 0.95
   s3_post_odds_floor: 0.125
   s3_post_min_mass: 0.5
@@ -161,9 +181,9 @@ Other important stage-3 controls are:
 | `s3_min_margin`, `s3_min_matched` | EAD1 assertion gates for top-two raw-score separation and matched fragment count. |
 | `s3_ead2_gate_db_on_resolvability` | Experimental EAD2 gate for C=C assertions. Disabled by default because it has a steep recall cost. |
 | `s3_report_position_tuples` | EAD2 output option that reports joint position hypotheses instead of independent per-position marginals. |
+| `s3_uvpd_wavelength_nm` | Laser wavelength in nm for `uvpd2` (`193`, `213` [default], `266`, or `355`). |
 | `s3_null_decoys` | Diagnostic-only scoring of impossible allene placements. Never produces annotations. |
 | `ozid_require_complete_pair`, `ozid_min_complete_pairs`, `ozid_formula_mz_tolerance` | OzID-specific evidence gates. |
-| `s3_uvpd_corr_weight` | UVPD-only chain-correlation score weight. |
 
 ### Retention time and diagnostics
 

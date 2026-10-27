@@ -108,6 +108,12 @@ PARAM:                          # Numeric and threshold parameters
 <td>Enable the internal LipidOracle MS1/MS2 annotation engine</td>
 </tr>
 <tr>
+<td><code>stage2</code></td>
+<td>bool or string</td>
+<td><code>'legacy'</code></td>
+<td>Stage-2 MS2 fragment simulation engine: <code>False</code> skips stage 2 (runs stage 1 only); <code>True</code> or <code>'legacy'</code> uses the empirical rule-based headgroup + acyl-chain simulator (default); <code>'qc-cid'</code> uses the first-principles RRKM/TS-2D QC-CID simulator; <code>'qc-ead'</code> uses the first-principles 10&ndash;20 eV QC-EAD stage-2 simulator.</td>
+</tr>
+<tr>
 <td><code>lipidex</code></td>
 <td>bool</td>
 <td><code>False</code></td>
@@ -160,8 +166,8 @@ PARAM:                          # Numeric and threshold parameters
 <tr>
 <td><code>stage3</code></td>
 <td>bool or string</td>
-<td><code>False</code>, <code>'ead1'</code>, <code>'ead2'</code>, <code>'uvpd'</code>, <code>'oad'</code>, <code>'ozid'</code></td>
-<td>Run stage 3: localise C=C and oxygen positions along the acyl chains, reporting idlevel 3 and 4. <code>ead1</code> skips oxidised species; <code>ead2</code> is required for anything carrying <code>;O</code>. <code>oad</code> currently supports unoxidised diacyl PC <code>[M+H]+</code>. <code>ozid</code> uses complete aldehyde/Criegee diagnostic pairs for its documented positive-ion profiles. Unsupported profiles fail closed. <code>True</code>/<code>'v1'</code>/<code>'v2'</code> are accepted aliases. See <a href="stage3.html">Acyl-chain analysis</a>.</td>
+<td><code>False</code>, <code>'ead1'</code>, <code>'ead2'</code>, <code>'ead3'</code>, <code>'uvpd'</code>, <code>'uvpd2'</code>, <code>'oad'</code>, <code>'oad2'</code>, <code>'ozid'</code></td>
+<td>Run stage 3: localise C=C and oxygen positions along the acyl chains, reporting idlevel 3 and 4. <code>ead1</code> skips oxidised species; <code>ead2</code> (and its DFT-informed variant <code>ead3</code>) is required for anything carrying <code>;O</code>. <code>oad</code> currently supports unoxidised diacyl PC <code>[M+H]+</code>. <code>ozid</code> uses complete aldehyde/Criegee diagnostic pairs for its documented positive-ion profiles. Unsupported profiles fail closed. <code>True</code>/<code>'v1'</code>/<code>'v2'</code>/<code>'v3'</code> are accepted aliases (v3&rarr;<code>ead3</code>). See <a href="stage3.html">Acyl-chain analysis</a>.</td>
 </tr>
 <tr>
 <td><code>rt_check</code></td>
@@ -248,6 +254,62 @@ PARAM:                          # Numeric and threshold parameters
 </tr>
 </tbody>
 </table>
+<h3>Stage 2 candidate selection</h3>
+<p>How a spectrum's idlevel-2 candidate list is cut. Mirrors the stage-3 selection below, and the two are independent.</p>
+<table>
+<thead>
+<tr>
+<th>Parameter</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>s2_selection</code></td>
+<td>string</td>
+<td><code>'posterior'</code></td>
+<td><code>posterior</code> (accepted as <code>credible</code>) converts scores to a probability distribution and keeps the smallest set holding <code>s2_post_credible_level</code>. <code>legacy</code> applies <code>s2_lo_score_cutoff</code> then <code>s2_score_top_cutoff</code> instead. Both stages select the same way: each converts the scores of the candidate set it enumerates into a softmax posterior and keeps the credible set, so at stage 2 the posterior is over the library species and adducts generated for that precursor (and its temperature is not fitted). Read <code>s2_n_cred</code> and <code>s2_score_raw</code> alongside <code>s2_top_prob</code>. <code>s2_lo_score_cutoff</code> does not apply on this path &mdash; set <code>s2_selection: legacy</code> to use the absolute cutoffs instead.</td>
+</tr>
+<tr>
+<td><code>s2_lo_score_cutoff</code></td>
+<td>float</td>
+<td><code>0.2</code></td>
+<td>Legacy selection only. Absolute floor on <code>hybrid_score</code> below which a candidate is discarded outright.</td>
+</tr>
+<tr>
+<td><code>s2_min_matched_rel</code></td>
+<td>float</td>
+<td><code>0.01</code></td>
+<td>Both selections. A candidate is discarded unless its most intense matched peak is at least this fraction of the spectrum's base peak, so a call that explains only a noise peak cannot score. <code>0</code> disables.</td>
+</tr>
+<tr>
+<td><code>s2_score_top_cutoff</code></td>
+<td>float</td>
+<td><code>0.9</code></td>
+<td>Legacy selection only. Keep candidates scoring within this fraction of the spectrum's best score.</td>
+</tr>
+<tr>
+<td><code>s2_post_credible_level</code></td>
+<td>float</td>
+<td><code>0.95</code></td>
+<td>Posterior selection only. Posterior mass the idlevel-2 credible set must reach.</td>
+</tr>
+<tr>
+<td><code>s2_post_temperature</code></td>
+<td>float</td>
+<td><code>0.06</code></td>
+<td>Posterior selection only. Softmax temperature converting raw <code>hybrid_score</code> values into a posterior. Matched to the legacy path's retained-set-size distribution on the one fixture available (<code>testdata/cid</code>), not fitted against curated ground truth &mdash; see <code>default_s2_post_temperature</code> in <code>src/config.rs</code>.</td>
+</tr>
+<tr>
+<td><code>s2_post_odds_floor</code></td>
+<td>float</td>
+<td><code>0.125</code></td>
+<td>Posterior selection only. Likelihood-ratio floor: a candidate is dropped once its posterior falls below <code>odds_floor &times; top_prob</code>, even if <code>s2_post_credible_level</code> has not been reached. On by default (unlike <code>s3_post_odds_floor</code>) because near-degenerate library entries are the common case at stage 2, not the exception.</td>
+</tr>
+</tbody>
+</table>
 <h3>Stage 3 &mdash; acyl-chain analysis (reports idlevel 3 and 4)</h3>
 <p>When <code>stage3</code> is enabled, these parameters control the exhaustive C=C and oxidation position search. <strong>Every one of them is prefixed <code>s3_</code>, after the stage rather than the ID level it reports</strong>; the former <code>ead_*</code> and <code>include_ms1_monochain</code> spellings are still accepted as aliases, so existing configs load unchanged.</p>
 <table>
@@ -276,17 +338,19 @@ PARAM:                          # Numeric and threshold parameters
 <td><code>s3_max_oxygen</code></td>
 <td>int</td>
 <td><code>2</code></td>
-<td>Caps total oxygen positions across all chains. Used by <code>ead2</code>/<code>uvpd</code>; <code>ead1</code> has no oxygen support and ignores it.</td>
+<td>Caps total oxygen positions across all chains. Used by <code>ead2</code>; <code>ead1</code> has no oxygen support and ignores it, and <code>uvpd</code> skips oxygenated (<code>;O</code>) chains entirely.</td>
 </tr>
 <tr>
 <td><code>s3_max_candidates</code></td>
-<td>int</td><td><code>100000</code></td>
-<td>Candidates scored before stride-sampling. Raise it further for oxidised work — a single <code>20:4;O</code> token enumerates ~22,300 candidates, and below that the true structure can be sampled out silently. See <a href="stage3.html">Acyl-chain analysis</a>.</td>
+<td>int</td>
+<td><code>10000</code></td>
+<td>Candidates scored before stride-sampling. Raise to 30000 for oxidised work — a single <code>20:4;O</code> token enumerates ~22,300 candidates, and below that the true structure can be sampled out silently. See <a href="stage3.html">Acyl-chain analysis</a>.</td>
 </tr>
 <tr>
-<td><code>s3_output_max</code></td>
-<td>int</td><td><code>100</code></td>
-<td>Candidates written to <code>diag/annotation_stage3.csv</code> per feature</td>
+<td><code>s3_max_output</code></td>
+<td>int</td>
+<td><code>20</code></td>
+<td>Candidates written to <code>diag/annotation_idlevel3.csv</code> per feature</td>
 </tr>
 <tr>
 <td><code>s3_min_score</code></td>
@@ -296,20 +360,21 @@ PARAM:                          # Numeric and threshold parameters
 </tr>
 <tr>
 <td><code>s3_min_margin</code></td>
-<td>float</td><td><code>0.0</code></td>
-<td>Minimum relative gap between the two best candidates before idlevel 4 names a position (<code>ead1</code>, <code>oad</code>, and <code>ozid</code>). Fitted against known positions for EAD; OAD and OzID calibration remains provisional.</td>
+<td>float</td>
+<td><code>0.05</code></td>
+<td>Minimum relative gap between the two best candidates before idlevel 4 names a position (<code>ead1</code>, <code>oad</code>, <code>uvpd</code>, and <code>ozid</code>). Fitted against known positions for EAD; OAD, UVPD, and OzID calibration remains provisional.</td>
 </tr>
 <tr>
 <td><code>s3_min_matched</code></td>
 <td>int</td>
 <td><code>3</code></td>
-<td>Minimum peaks the winning candidate must have matched for that gap to count (<code>ead1</code> and <code>oad</code>); OzID uses complete diagnostic pairs instead.</td>
+<td>Minimum peaks the winning candidate must have matched for that gap to count (<code>ead1</code>, <code>oad</code>, and <code>uvpd</code>); OzID uses complete diagnostic pairs instead.</td>
 </tr>
 <tr>
 <td><code>s3_intensity_scaling</code></td>
 <td>string</td>
 <td><code>'none'</code></td>
-<td>Compressive transform on matched intensity (<code>ead2</code> only): <code>none</code>, <code>sqrt</code>, <code>log10</code>, <code>ln</code>, <code>log2</code>. <code>ead1</code> and <code>oad</code> always apply <code>sqrt</code> as part of their scoring models.</td>
+<td>Compressive transform on matched intensity, shared by the intensity-weighted engines (<code>ead1</code>, <code>ead2</code>, <code>ead3</code>, <code>oad</code>, <code>uvpd</code>; <code>ozid</code> has no intensity term): <code>none</code>, <code>sqrt</code>, <code>log10</code>, <code>ln</code>, <code>log2</code>. <code>ead1</code> was fitted assuming <code>sqrt</code> weighting — set it explicitly to use that fit, since the shared default is <code>none</code>.</td>
 </tr>
 <tr>
 <td><code>db_n_notation</code></td>
@@ -377,7 +442,19 @@ PARAM:                          # Numeric and threshold parameters
 <td><code>s3_post_temperature</code></td>
 <td>float</td>
 <td><code>0.01</code></td>
-<td>Softmax temperature turning score gaps into probabilities. Fitted against known positions, not chosen — larger flattens the posterior towards chance, smaller manufactures confidence.</td>
+<td>Softmax temperature turning score gaps into probabilities, shared by <code>oad</code>/<code>ozid</code>/<code>oad2</code>. Fitted against known positions, not chosen — larger flattens the posterior towards chance, smaller manufactures confidence. <code>ead1</code>, <code>ead2</code>, <code>ead3</code>, and <code>uvpd</code> have their own engine-specific values (<code>s3_post_temperature_ead1</code>: <code>0.03</code>, <code>_ead2</code>: <code>0.003</code>, <code>_ead3</code>: <code>0.03</code>, <code>_uvpd</code>: <code>0.003</code>); had borrows <code>ead1</code>'s value.</td>
+</tr>
+<tr>
+<td><code>s3_uvpd_wavelength_nm</code></td>
+<td>number (nm)</td>
+<td><code>213.0</code></td>
+<td>Laser wavelength in nm for <code>uvpd2</code> (supported: <code>193</code>, <code>213</code> [default], <code>266</code>, and <code>355</code>). Controls wavelength-selective &pi;&rarr;&pi;* and n&rarr;&sigma;*/n&rarr;&pi;* chromophore cross-sections across isolated alkenes, conjugated dienes/enones, and oxidized chains.</td>
+</tr>
+<tr>
+<td><code>s3_post_temperature_uvpd</code></td>
+<td>float</td>
+<td><code>0.003</code></td>
+<td>Softmax temperature for <code>uvpd</code> specifically. UVPD emits a small, discrete diagnostic set, so its posterior should track the raw-score front-runner tightly; the shared value carried over from EAD's dense ladders was too flat. Tuned against the UVPD ground-truth fixtures (see <code>dev/uvpd_tune.py</code>).</td>
 </tr>
 <tr>
 <td><code>s3_legacy_cutoff</code></td>
@@ -394,6 +471,7 @@ PARAM:                          # Numeric and threshold parameters
 WORKFLOW:
   mz_target: ''
   lipidoracle: True
+  stage2: legacy
   lipidex: False
   lipidblast: False
   library_extra: []
@@ -421,10 +499,12 @@ PARAM:
 <ul>
 <li><strong>Looser matching</strong> (more candidates): lower <code>rarity_max</code>, increase <code>ms1_tolerance</code></li>
 <li><strong>Stricter matching</strong> (fewer false positives): raise <code>rarity_max</code>, decrease <code>ms1_tolerance</code></li>
-<li><strong>Faster runs</strong> (skip acyl analysis): keep <code>stage3: False</code> or lower <code>s3_max_candidates</code></li>
+<li><strong>Faster runs</strong> (skip acyl analysis): keep <code>stage3: False</code> or lower <code>s3_max_candidates</code>; to run MS1-only screening without MS2 scoring, set <code>stage2: False</code></li>
+<li><strong>First-principles Stage-2 MS2 simulation</strong>: set <code>stage2: qc-cid</code> for RRKM/TS-2D collision-induced dissociation spectra or <code>stage2: qc-ead</code> for 10&ndash;20 eV electron-activated dissociation spectra</li>
 <li><strong>Oxidised lipids</strong>: raise <code>ms1_maxO</code> and <code>ms2_maxO</code> (default 0 means no oxidation variants), pick <code>stage3: ead2</code>, and raise <code>s3_max_candidates</code> to 30000</li>
 <li><strong>More positional calls, accepting more wrong ones</strong>: set <code>s3_selection: legacy</code>. This also reproduces pre-1.0.173 behaviour.</li>
 <li><strong>Fewer but better positional calls</strong>: keep the default <code>posterior</code> and raise <code>s3_post_min_mass</code></li>
+<li><strong>Idlevel-2 candidates with an absolute cutoff</strong>: set <code>s2_selection: legacy</code> &mdash; the default <code>posterior</code> path does not apply the <code>s2_lo_score_cutoff</code> floor</li>
 <li><strong>Targeted RT validation</strong>: choose <code>rt_check: legacy</code> for the original two-regression model, or <code>rt_check: False</code> to skip RT filtering entirely</li>
 </ul>
 </article>

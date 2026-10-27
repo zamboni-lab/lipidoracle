@@ -35,11 +35,14 @@ Stage 2 uses diagnostic and chain-related fragments to score candidates. `PARAM.
 PARAM:
   ms2_maxO: 2
   ms2_tolerance: 0.02
+  s2_selection: legacy
   s2_lo_score_cutoff: 0.2
   s2_score_top_cutoff: 0.9
 ```
 
 MS2 can confirm the lipid class and can sometimes assign chain composition or an oxygenated chain at level 2. However, stage-2 fragment evidence normally does not localize a functional group along the acyl chain. A chain name such as `20:4;O` should be read as an oxygen-count description, not a positional oxidized-lipid structure.
+
+`PARAM.s2_selection` defaults to `posterior` tool-wide (see [MS1 and MS2 matching](ms1-ms2-matching.md)); `legacy` is available, as shown above, when an absolute cutoff is wanted instead, which for oxidation work keeps `s2_lo_score_cutoff` in play.
 
 Use `rival_resolvability` to determine whether observed **exclusive** fragments actually distinguish an oxygenated chain arrangement from a surviving rival. When they do not, the configured stage-2 fallback should preserve a species-level or underscore-separated result instead of an overstated chain or *sn* claim.
 

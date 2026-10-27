@@ -812,11 +812,11 @@ footer p { margin: 0; }
   <section class="hero">
     <div class="wrap">
       <div class="hero-title">
-        <h1>LipidOracle: ambiguity-aware lipid annotation</h1>
+        <h1>Lipid structures, FAIRly identified.</h1>
       </div>
       <div class="hero-copy">
         <p>
-          Hierarchical, traceable, all-isomers annotation of MS1, CID, EAD, UVPD, ... spectra. Rust-based. Runs as a Docker container.
+          Hierarchical, traceable, all-isomers annotation of MS1, CID, EAD, UVPD, OAD spectra. Rust-based. Runs as a Docker container.
         </p>
         <ul class="hero-features">
           <li><strong>Truly untargeted:</strong> a <a href="library.html">built-in library</a> spanning 49 lipid classes, including rare chain lengths and oxidised forms, for &gt;3 Mio unique compounds</li>
@@ -888,6 +888,7 @@ footer p { margin: 0; }
             <strong>Review the parameters, then run again.</strong> Or simply trust the defaults, which use the internal LipidOracle library and a permissive RT checking routine (LiRI).</p>
               <pre><code>WORKFLOW:
   lipidoracle: True       <span class="c"># internal MS1/MS2 annotation engine</span>
+  stage2: legacy          <span class="c"># False | legacy | qc-cid | qc-ead</span>
   stage3: False           <span class="c"># No EAD/UVPD/OAD/OzID analysis of acyl chains</span>
   rt_check: liri          <span class="c"># False | legacy | liri | hydra</span></code></pre>
           </div>
